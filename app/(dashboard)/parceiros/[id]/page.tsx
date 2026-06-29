@@ -16,7 +16,7 @@ const PARTNER = {
   cpf: '123.456.789-00',
   telefone: '(11) 98765-4321',
   email: 'joao@email.com',
-  status: 'inativo' as const,
+  status: 'INATIVO' as 'ATIVO' | 'INATIVO',
   faixa: 'Faixa 3',
   totalProducao: 124800,
   productions: [
