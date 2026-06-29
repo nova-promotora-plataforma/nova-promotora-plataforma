@@ -64,8 +64,8 @@ export default function ParceiroProfilePage({ params }: { params: { id: string }
               {PARTNER.codigo} · {PARTNER.cidade} / {PARTNER.uf} · CPF: {PARTNER.cpf}
             </p>
             <div className="flex flex-wrap gap-2 mt-2">
-              <Badge variant={PARTNER.status} dot>
-                {PARTNER.status === 'ativo' ? 'Ativo' : 'Inativo'}
+              <Badge variant={PARTNER.status === 'ATIVO' ? 'ativo' : 'inativo'} dot>
+                {PARTNER.status === 'ATIVO' ? 'Ativo' : 'Inativo'}
               </Badge>
               <Badge variant="amber">{PARTNER.faixa}</Badge>
             </div>
