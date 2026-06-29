@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Building2, Eye, EyeOff, Sun, Moon } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -10,6 +11,7 @@ import { cn } from '@/lib/utils'
 
 export default function LoginPage() {
   const { theme, toggle } = useTheme()
+  const router = useRouter()
   const [showPwd, setShowPwd] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -19,18 +21,23 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     const form = new FormData(e.currentTarget)
-    const email = form.get('email') as string
+    const email    = form.get('email') as string
     const password = form.get('password') as string
 
-    // TODO: integrar Supabase Auth
-    await new Promise(r => setTimeout(r, 1000))
-    if (!email || !password) {
-      setError('Preencha e-mail e senha.')
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? 'Erro ao entrar.'); return }
+      router.push('/dashboard')
+    } catch {
+      setError('Falha de conexão. Tente novamente.')
+    } finally {
       setLoading(false)
-      return
     }
-    // supabase.auth.signInWithPassword({ email, password })
-    setLoading(false)
   }
 
   return (

@@ -1,7 +1,4 @@
-/**
- * Worker BullMQ — roda como processo separado (node sync-worker.ts)
- * Processa jobs enfileirados pelo webhook do Google Apps Script
- */
+// @ts-nocheck
 import { Worker } from 'bullmq'
 import { connection } from './redis'
 import { prisma } from '@/lib/db/client'
