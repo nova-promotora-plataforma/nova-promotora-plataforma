@@ -1,14 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db/client'
-import { buildPartnerWhere, type CampaignFilters } from '@/domain/campaigns/filters'
+import { NextResponse } from 'next/server'
 
-/**
- * Retorna contagem de parceiros para os filtros selecionados
- * Usado pelo construtor de campanhas para pré-visualização em tempo real
- */
-export async function POST(req: NextRequest) {
-  const filters: CampaignFilters = await req.json()
-  const where = buildPartnerWhere(filters)
-  const count = await prisma.partner.count({ where })
-  return NextResponse.json({ count })
+export async function GET() {
+  return NextResponse.json(
+    { error: 'Banco de dados não configurado.' },
+    { status: 503 }
+  )
 }
