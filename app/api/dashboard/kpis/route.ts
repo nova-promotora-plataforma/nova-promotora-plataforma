@@ -14,7 +14,7 @@ function parseBRL(raw: string | undefined): number {
   if (!raw) return 0
   return parseFloat(raw.replace(/[R$\s.]/g, '').replace(',', '.')) || 0
 }
-export function toTitleCase(s: string): string {
+function toTitleCase(s: string): string {
   const minors = new Set(['de','da','do','das','dos','e','a','o','em','na','no'])
   return s.toLowerCase().split(' ').map((w, i) =>
     i === 0 || !minors.has(w) ? w.charAt(0).toUpperCase() + w.slice(1) : w
