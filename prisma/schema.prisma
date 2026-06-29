@@ -1,0 +1,182 @@
+// Nova Promotora — Schema Prisma
+// Fonte de verdade: PostgreSQL (Supabase)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Usuários (gerenciados pelo Supabase Auth) ───────────────────────────────
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  role      UserRole @default(ANALISTA)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  campaigns  Campaign[]
+  auditLogs  AuditLog[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMINISTRADOR
+  GESTOR_COMERCIAL
+  ANALISTA
+  EXECUTIVO_COMERCIAL
+  SOMENTE_LEITURA
+}
+
+// ─── Parceiros ───────────────────────────────────────────────────────────────
+
+model Partner {
+  id                 String    @id @default(uuid())
+  codigo             String    @unique               // chave de negócio — imutável
+  nome               String
+  funcionarioCidade  String?   @map("funcionario_cidade")
+  uf                 String?   @db.Char(2)
+  cpfResponsavel     String?   @map("cpf_responsavel")
+  telefoneOficial    String?   @map("telefone_oficial")
+  emailOficial       String?   @map("email_oficial")
+  status             PartnerStatus @default(INATIVO) // calculado após sync
+  isEligible         Boolean   @default(false)       @map("is_eligible")
+  totalProducao      Decimal   @default(0)           @map("total_producao") @db.Decimal(15, 2)
+  lastProductionDate DateTime? @map("last_production_date") @db.Date
+  createdAt          DateTime  @default(now())       @map("created_at")
+  updatedAt          DateTime  @updatedAt            @map("updated_at")
+  deletedAt          DateTime?                       @map("deleted_at")   // soft delete
+
+  productions  PartnerProduction[]
+  segments     PartnerSegment[]
+
+  @@index([status, isEligible])
+  @@index([uf, status])
+  @@index([lastProductionDate])
+  @@map("partners")
+}
+
+enum PartnerStatus {
+  ATIVO
+  INATIVO
+}
+
+// ─── Produções mensais ───────────────────────────────────────────────────────
+
+model PartnerProduction {
+  id             String   @id @default(uuid())
+  partnerId      String   @map("partner_id")
+  referenceMonth DateTime @map("reference_month") @db.Date  // sempre 1º do mês
+  amount         Decimal  @db.Decimal(15, 2)
+  diffPrevValue  Decimal? @map("diff_prev_value")  @db.Decimal(15, 2)
+  diffPrevPct    Decimal? @map("diff_prev_pct")    @db.Decimal(8, 4)
+  source         ProductionSource @default(IMPORT_SHEETS)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt     @map("updated_at")
+
+  partner Partner @relation(fields: [partnerId], references: [id])
+
+  @@unique([partnerId, referenceMonth])
+  @@index([partnerId, referenceMonth])
+  @@index([referenceMonth])
+  @@map("partner_productions")
+}
+
+enum ProductionSource {
+  IMPORT_SHEETS
+  MANUAL
+}
+
+// ─── Segmentos comportamentais (Fase 2) ──────────────────────────────────────
+
+model PartnerSegment {
+  id                    String          @id @default(uuid())
+  partnerId             String          @map("partner_id")
+  segmentType           SegmentType     @map("segment_type")
+  productionBand        Int?            @map("production_band") @db.SmallInt
+  calculatedProduction  Decimal?        @map("calculated_production") @db.Decimal(15, 2)
+  confidenceLevel       ConfidenceLevel @map("confidence_level")
+  calculatedAt          DateTime        @map("calculated_at")
+  expiresAt             DateTime        @map("expires_at")
+
+  partner Partner @relation(fields: [partnerId], references: [id])
+
+  @@map("partner_segments")
+}
+
+enum SegmentType {
+  CHAMPION
+  GROWING
+  DECLINING
+  AT_RISK
+  STABLE
+  RECOVERING
+  HIBERNATING
+  LOST
+  NEW
+}
+
+enum ConfidenceLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+// ─── Campanhas ───────────────────────────────────────────────────────────────
+
+model Campaign {
+  id             String         @id @default(uuid())
+  name           String
+  status         CampaignStatus @default(DRAFT)
+  filterSnapshot Json           @map("filter_snapshot")  // snapshot dos filtros
+  partnersCount  Int            @default(0)              @map("partners_count")
+  createdBy      String         @map("created_by")
+  createdAt      DateTime       @default(now())          @map("created_at")
+  exportedAt     DateTime?                               @map("exported_at")
+
+  creator User @relation(fields: [createdBy], references: [id])
+
+  @@map("campaigns")
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  EXPORTED
+  ARCHIVED
+}
+
+// ─── Audit Log (append-only) ─────────────────────────────────────────────────
+
+model AuditLog {
+  id           String      @id @default(uuid())
+  userId       String      @map("user_id")
+  entityType   String      @map("entity_type")  // 'partner', 'campaign', etc.
+  entityId     String      @map("entity_id")
+  action       AuditAction
+  previousData Json?       @map("previous_data")
+  newData      Json?       @map("new_data")
+  createdAt    DateTime    @default(now()) @map("created_at")  // nunca deletar
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  EXPORT
+  SYNC
+}

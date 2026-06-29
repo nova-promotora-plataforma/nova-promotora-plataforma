@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── CSS Variables — Design System Nova Promotora ─── */
+:root {
+  /* Dark (padrão) */
+  --nova-bg:          #080B12;
+  --nova-bg-elev:     #0E1421;
+  --nova-bg-elev-2:   #1A2B40;
+  --nova-border:      #22304A;
+  --nova-navy:        #1A2B40;
+  --nova-navy-light:  #2C4366;
+  --nova-red:         #CF190F;
+  --nova-blue:        #3D7BFF;
+  --nova-text:        #EEF2F8;
+  --nova-text-muted:  #9AA6BA;
+  --nova-text-dim:    #5D6880;
+
+  /* Surface glass dark */
+  --glass-bg:         rgba(255, 255, 255, 0.05);
+  --glass-bg-hover:   rgba(255, 255, 255, 0.07);
+  --glass-border:     rgba(255, 255, 255, 0.10);
+
+  /* Botões */
+  --btn-blue-bg:      rgba(61, 123, 255, 0.16);
+  --btn-blue-border:  rgba(61, 123, 255, 0.45);
+  --btn-blue-text:    #7BA8FF;
+  --btn-red-bg:       rgba(207, 25, 15, 0.13);
+  --btn-red-border:   rgba(207, 25, 15, 0.40);
+  --btn-red-text:     #FF6B60;
+}
+
+.light {
+  --nova-bg:          #EEF1F7;
+  --nova-bg-elev:     #FFFFFF;
+  --nova-bg-elev-2:   #E4E8F2;
+  --nova-border:      #D9DFEA;
+  --nova-navy:        #1A2B40;
+  --nova-navy-light:  #2C4366;
+  --nova-text:        #10182A;
+  --nova-text-muted:  #4A5568;
+  --nova-text-dim:    #8896AA;
+
+  --glass-bg:         rgba(16, 24, 42, 0.04);
+  --glass-bg-hover:   rgba(16, 24, 42, 0.06);
+  --glass-border:     rgba(16, 24, 42, 0.12);
+
+  --btn-blue-text:    #1A5CC0;
+  --btn-red-text:     #9B140B;
+}
+
+/* ─── Reset & base ─── */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 100%; /* controlado pelo botão de acessibilidade via JS */
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--nova-bg);
+  color: var(--nova-text);
+  font-family: var(--font-sora), sans-serif;
+  font-size: 0.9375rem; /* 15px base */
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Scrollbar discreta ─── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--nova-border); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--nova-navy-light); }
+
+/* ─── Focus visible global ─── */
+:focus-visible {
+  outline: 2px solid var(--nova-blue);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Glass surface ─── */
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(18px) saturate(120%);
+  border-radius: 18px;
+  transition: background 150ms ease;
+}
+.glass:hover { background: var(--glass-bg-hover); }
+
+/* ─── Zebra sutil em tabelas ─── */
+.table-zebra tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.015);
+}
+.light .table-zebra tbody tr:nth-child(even) {
+  background: rgba(16, 24, 42, 0.02);
+}
+
+/* ─── Transições padrão ─── */
+.transition-nova {
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
