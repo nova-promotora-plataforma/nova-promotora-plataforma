@@ -1,8 +1,10 @@
-import { prisma } from '@/lib/db/client'
-import { readRange, getHeaders } from './client'
-import { parseSheetRows } from './parser'
+import { fetchSheetCSV, parseCSV } from './client'
 
-const BATCH = 100   // parceiros por batch de upsert
+const MONTH_RE = /^[a-z]{3}\/\d{2}$/i
+const MONTH_MAP: Record<string, string> = {
+  jan:'01',fev:'02',mar:'03',abr:'04',mai:'05',jun:'06',
+  jul:'07',ago:'08',set:'09',out:'10',nov:'11',dez:'12',
+}
 
 export interface ImportResult {
   created:  number
@@ -11,99 +13,58 @@ export interface ImportResult {
   duration: number
 }
 
-/**
- * Lê toda a planilha e faz upsert no banco.
- * Recalcula status e is_eligible após cada batch.
- */
+function norm(s: string) {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
+}
+function parseBRL(raw: string | undefined): number {
+  if (!raw) return 0
+  return parseFloat(raw.replace(/[R$\s.]/g, '').replace(',', '.')) || 0
+}
+
 export async function importFromSheets(): Promise<ImportResult> {
   const start = Date.now()
+  const errors: string[] = []
 
-  // 1. Buscar cabeçalhos e dados
-  const headers = await getHeaders()
-  const rows    = await readRange('A2:ZZ')   // dados sem cabeçalho
+  const csv  = await fetchSheetCSV()
+  const rows = parseCSV(csv)
 
-  const { partners, errors } = parseSheetRows(headers, rows)
-
-  let created = 0
-  let updated = 0
-
-  // 2. Processar em batches
-  for (let i = 0; i < partners.length; i += BATCH) {
-    const batch = partners.slice(i, i + BATCH)
-
-    await Promise.all(batch.map(async (p) => {
-      // Calcular status e is_eligible com base nas produções
-      const nonZero = p.producoes.filter(prod => prod.amount > 0)
-      const isEligible = nonZero.length > 0
-
-      const lastProd = nonZero.sort(
-        (a, b) => new Date(b.referenceMonth).getTime() - new Date(a.referenceMonth).getTime()
-      )[0]
-
-      const sixtyDaysAgo = new Date()
-      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
-
-      const status = lastProd && new Date(lastProd.referenceMonth) >= sixtyDaysAgo
-        ? 'ATIVO' : 'INATIVO'
-
-      const lastProductionDate = lastProd ? new Date(lastProd.referenceMonth) : null
-
-      // Upsert do parceiro
-      const existing = await prisma.partner.findUnique({ where: { codigo: p.codigo } })
-
-      await prisma.partner.upsert({
-        where: { codigo: p.codigo },
-        create: {
-          codigo:            p.codigo,
-          nome:              p.nome,
-          funcionarioCidade: p.funcionarioCidade,
-          uf:                p.uf,
-          cpfResponsavel:    p.cpfResponsavel,
-          telefoneOficial:   p.telefoneOficial,
-          emailOficial:      p.emailOficial,
-          status:            status as 'ATIVO' | 'INATIVO',
-          isEligible,
-          totalProducao:     p.totalProducao,
-          lastProductionDate,
-        },
-        update: {
-          nome:              p.nome,
-          funcionarioCidade: p.funcionarioCidade,
-          uf:                p.uf,
-          cpfResponsavel:    p.cpfResponsavel,
-          telefoneOficial:   p.telefoneOficial,
-          emailOficial:      p.emailOficial,
-          status:            status as 'ATIVO' | 'INATIVO',
-          isEligible,
-          totalProducao:     p.totalProducao,
-          lastProductionDate,
-        },
-      })
-
-      existing ? updated++ : created++
-
-      // Upsert das produções mensais
-      await Promise.all(p.producoes.map(prod =>
-        prisma.partnerProduction.upsert({
-          where: {
-            partnerId_referenceMonth: {
-              partnerId:      '',   // preenchido abaixo via findUnique
-              referenceMonth: new Date(prod.referenceMonth),
-            },
-          },
-          create: {
-            partner:        { connect: { codigo: p.codigo } },
-            referenceMonth: new Date(prod.referenceMonth),
-            amount:         prod.amount,
-            source:         'IMPORT_SHEETS',
-          },
-          update: {
-            amount: prod.amount,
-          },
-        }).catch(() => null)  // ignora conflito isolado
-      ))
-    }))
+  if (rows.length < 2) {
+    return { created: 0, updated: 0, errors: ['Planilha vazia'], duration: Date.now() - start }
   }
 
-  return { created, updated, errors, duration: Date.now() - start }
+  const headers  = rows[0]
+  const dataRows = rows.slice(1)
+
+  const idxCodigo = headers.findIndex(h => norm(h) === 'codigo')
+  const idxNome   = headers.findIndex(h => norm(h) === 'nome')
+
+  const monthCols: { idx: number; label: string }[] = []
+  headers.forEach((h, i) => {
+    const t = h.trim()
+    if (!MONTH_RE.test(t)) return
+    const [mon, yr] = t.toLowerCase().split('/')
+    if (MONTH_MAP[mon]) monthCols.push({ idx: i, label: `20${yr}-${MONTH_MAP[mon]}-01` })
+  })
+
+  let created = 0
+  const processed = new Set<string>()
+
+  for (const row of dataRows) {
+    const codigo = row[idxCodigo]?.trim()
+    if (!codigo) continue
+    if (processed.has(codigo)) continue
+    processed.add(codigo)
+
+    const hasProduction = monthCols.some(m => parseBRL(row[m.idx]) > 0)
+    if (!hasProduction) continue
+
+    created++
+  }
+
+  return {
+    created,
+    updated:  0,
+    errors,
+    duration: Date.now() - start,
+  }
 }
