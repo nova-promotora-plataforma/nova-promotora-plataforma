@@ -1,13 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { TopBar } from '@/components/layout/TopBar'
 import { KPICard } from '@/components/ui/KPICard'
 import { ProductionChart } from '@/components/charts/ProductionChart'
 import { BarChart } from '@/components/charts/BarChart'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { Megaphone, Loader2 } from 'lucide-react'
+import { Megaphone, Loader2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
 function fmtCurrency(v: number) {
@@ -27,9 +28,14 @@ interface KpiData {
   alertPartners:  { nome: string; uf: string; lastMonth: string; total: number; status: string }[]
 }
 
+type SortDir = 'asc' | 'desc'
+type SortCol = 'nome' | 'uf' | 'lastMonth' | 'total'
+
 export default function DashboardPage() {
   const [data, setData]       = useState<KpiData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sortCol, setSortCol] = useState<SortCol>('total')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
 
   useEffect(() => {
     fetch('/api/dashboard/kpis')
@@ -37,6 +43,36 @@ export default function DashboardPage() {
       .then(d => { setData(d); setLoading(false) })
       .catch(() => setLoading(false))
   }, [])
+
+  function toggleSort(col: SortCol) {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortCol(col); setSortDir('asc') }
+  }
+
+  function SortIcon({ col }: { col: SortCol }) {
+    if (sortCol !== col) return <ChevronsUpDown size={11} className="ml-1 opacity-30" />
+    return sortDir === 'asc'
+      ? <ChevronUp   size={11} className="ml-1 text-[var(--nova-blue)]" />
+      : <ChevronDown size={11} className="ml-1 text-[var(--nova-blue)]" />
+  }
+
+  const sortedAlerts = useCallback(() => {
+    if (!data?.alertPartners) return []
+    return [...data.alertPartners].sort((a, b) => {
+      let diff = 0
+      if (sortCol === 'nome')      diff = a.nome.localeCompare(b.nome, 'pt-BR')
+      else if (sortCol === 'uf')   diff = a.uf.localeCompare(b.uf)
+      else if (sortCol === 'lastMonth') {
+        const toNum = (m: string) => {
+          const mm: Record<string,string> = { jan:'01',fev:'02',mar:'03',abr:'04',mai:'05',jun:'06',jul:'07',ago:'08',set:'09',out:'10',nov:'11',dez:'12' }
+          const [mon, yr] = m.split('/')
+          return parseInt(`20${yr}${mm[mon] ?? '00'}`) || 0
+        }
+        diff = toNum(a.lastMonth) - toNum(b.lastMonth)
+      } else diff = a.total - b.total
+      return sortDir === 'desc' ? -diff : diff
+    })
+  }, [data, sortCol, sortDir])()
 
   return (
     <>
@@ -109,8 +145,25 @@ export default function DashboardPage() {
               <table className="w-full text-sm table-zebra" aria-label="Lista de parceiros em alerta">
                 <thead>
                   <tr className="bg-[var(--nova-bg-elev-2)]">
-                    {['Parceiro','UF','Último registro','Total acumulado','Status'].map(h => (
-                      <th key={h} className="px-4 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">{h}</th>
+                    {([
+                      { label: 'Parceiro',        col: 'nome'      },
+                      { label: 'UF',              col: 'uf'        },
+                      { label: 'Último registro', col: 'lastMonth' },
+                      { label: 'Total acumulado', col: 'total'     },
+                      { label: 'Status',          col: null        },
+                    ] as { label: string; col: SortCol | null }[]).map(({ label, col }) => (
+                      <th
+                        key={label}
+                        onClick={col ? () => toggleSort(col) : undefined}
+                        className={cn(
+                          'px-4 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]',
+                          col && 'cursor-pointer hover:text-[var(--nova-text)] select-none'
+                        )}
+                      >
+                        <span className="inline-flex items-center">
+                          {label}{col && <SortIcon col={col} />}
+                        </span>
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -119,9 +172,9 @@ export default function DashboardPage() {
                     <tr><td colSpan={5} className="px-4 py-8 text-center text-[var(--nova-text-dim)]">
                       <Loader2 size={16} className="animate-spin inline mr-2" />Carregando…
                     </td></tr>
-                  ) : (data?.alertPartners ?? []).length === 0 ? (
+                  ) : sortedAlerts.length === 0 ? (
                     <tr><td colSpan={5} className="px-4 py-8 text-center text-[var(--nova-text-dim)]">Nenhum parceiro em alerta.</td></tr>
-                  ) : (data?.alertPartners ?? []).map((p, i) => (
+                  ) : sortedAlerts.map((p, i) => (
                     <tr key={i} className="hover:bg-white/[0.02] transition-nova">
                       <td className="px-4 py-2.5 font-medium text-[var(--nova-text)]">{p.nome}</td>
                       <td className="px-4 py-2.5 text-[var(--nova-text-muted)]">{p.uf}</td>
