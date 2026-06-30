@@ -32,10 +32,12 @@ function toTitleCase(s: string): string {
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
-  const page   = Math.max(1, parseInt(searchParams.get('page') ?? '1'))
-  const busca  = (searchParams.get('q') ?? '').toLowerCase().trim()
-  const status = searchParams.get('status') ?? ''
-  const uf     = (searchParams.get('uf') ?? '').toUpperCase()
+  const page    = Math.max(1, parseInt(searchParams.get('page') ?? '1'))
+  const busca   = (searchParams.get('q') ?? '').toLowerCase().trim()
+  const status  = searchParams.get('status') ?? ''
+  const uf      = (searchParams.get('uf') ?? '').toUpperCase()
+  const sortBy  = searchParams.get('sortBy') ?? 'nome'
+  const sortDir = searchParams.get('sortDir') ?? 'asc'
 
   const csv  = await fetchSheetCSV()
   const rows = parseCSV(csv)
@@ -119,9 +121,28 @@ export async function GET(req: NextRequest) {
     return true
   })
 
+  // Ordenação
+  filtered.sort((a, b) => {
+    let diff = 0
+    if (sortBy === 'totalProducao') {
+      diff = a.totalProducao - b.totalProducao
+    } else if (sortBy === 'lastProductionMonth') {
+      const toNum = (m: string | null) => {
+        if (!m) return 0
+        const [mon, yr] = m.split('/')
+        const mm: Record<string,string> = { jan:'01',fev:'02',mar:'03',abr:'04',mai:'05',jun:'06',jul:'07',ago:'08',set:'09',out:'10',nov:'11',dez:'12' }
+        return parseInt(`20${yr}${mm[mon] ?? '00'}`) || 0
+      }
+      diff = toNum(a.lastProductionMonth) - toNum(b.lastProductionMonth)
+    } else {
+      diff = a.nome.localeCompare(b.nome, 'pt-BR')
+    }
+    return sortDir === 'desc' ? -diff : diff
+  })
+
   const total = filtered.length
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const slice = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  return NextResponse.json({ data: slice, total, page, pages })
+  return NextResponse.json({ data: slice, total, page, pages, sortBy, sortDir })
 }

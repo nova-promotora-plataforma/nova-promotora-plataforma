@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { TopBar } from '@/components/layout/TopBar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { Megaphone, Eye, ChevronLeft, ChevronRight, Filter, Loader2 } from 'lucide-react'
+import { Megaphone, Eye, ChevronLeft, ChevronRight, Filter, Loader2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const PAGE_SIZE = 20
@@ -48,12 +48,30 @@ export default function ParceirosPage() {
   const [status, setStatus] = useState('')
   const [uf, setUf]         = useState('')
   const [applied, setApplied] = useState({ busca: '', status: '', uf: '' })
+  const [sortBy,  setSortBy]  = useState('nome')
+  const [sortDir, setSortDir] = useState('asc')
 
-  const load = useCallback(async (p: number, filters: typeof applied) => {
+  function toggleSort(col: string) {
+    if (sortBy === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(col)
+      setSortDir('asc')
+    }
+  }
+
+  function SortIcon({ col }: { col: string }) {
+    if (sortBy !== col) return <ChevronsUpDown size={11} className="ml-1 opacity-30" />
+    return sortDir === 'asc'
+      ? <ChevronUp   size={11} className="ml-1 text-[var(--nova-blue)]" />
+      : <ChevronDown size={11} className="ml-1 text-[var(--nova-blue)]" />
+  }
+
+  const load = useCallback(async (p: number, filters: typeof applied, sb = sortBy, sd = sortDir) => {
     setLoading(true)
     setSelected([])
     try {
-      const params = new URLSearchParams({ page: String(p), limit: String(PAGE_SIZE) })
+      const params = new URLSearchParams({ page: String(p), limit: String(PAGE_SIZE), sortBy: sb, sortDir: sd })
       if (filters.busca)  params.set('q', filters.busca)
       if (filters.status) params.set('status', filters.status)
       if (filters.uf)     params.set('uf', filters.uf)
@@ -72,14 +90,14 @@ export default function ParceirosPage() {
     }
   }, [])
 
-  useEffect(() => { load(1, applied) }, [load, applied])
+  useEffect(() => { load(1, applied, sortBy, sortDir) }, [load, applied, sortBy, sortDir])
 
   function applyFilters() {
     const next = { busca, status, uf }
     setApplied(next)
   }
 
-  function goTo(p: number) { load(p, applied) }
+  function goTo(p: number) { load(p, applied, sortBy, sortDir) }
 
   function toggleSelect(id: string) {
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
@@ -199,9 +217,26 @@ export default function ParceirosPage() {
                       className="accent-[var(--nova-blue)] cursor-pointer"
                     />
                   </th>
-                  {['Código', 'Nome', 'Cidade / UF', 'Último prod.', 'Total acumulado', 'Status', ''].map(h => (
-                    <th key={h} className="px-4 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">
-                      {h}
+                  {([
+                    { label: 'Código',          col: null },
+                    { label: 'Nome',             col: 'nome' },
+                    { label: 'Cidade / UF',      col: null },
+                    { label: 'Último prod.',     col: 'lastProductionMonth' },
+                    { label: 'Total acumulado',  col: 'totalProducao' },
+                    { label: 'Status',           col: null },
+                    { label: '',                 col: null },
+                  ] as { label: string; col: string | null }[]).map(({ label, col }) => (
+                    <th
+                      key={label}
+                      onClick={col ? () => toggleSort(col) : undefined}
+                      className={cn(
+                        'px-4 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]',
+                        col && 'cursor-pointer hover:text-[var(--nova-text)] select-none'
+                      )}
+                    >
+                      <span className="inline-flex items-center">
+                        {label}{col && <SortIcon col={col} />}
+                      </span>
                     </th>
                   ))}
                 </tr>
