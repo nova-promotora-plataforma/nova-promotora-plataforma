@@ -122,18 +122,25 @@ export async function GET(req: NextRequest) {
   })
 
   // Ordenação
+  const monthToNum = (m: string | null) => {
+    if (!m) return 0
+    const [mon, yr] = m.split('/')
+    const mm: Record<string,string> = { jan:'01',fev:'02',mar:'03',abr:'04',mai:'05',jun:'06',jul:'07',ago:'08',set:'09',out:'10',nov:'11',dez:'12' }
+    return parseInt(`20${yr}${mm[mon] ?? '00'}`) || 0
+  }
+
   filtered.sort((a, b) => {
     let diff = 0
     if (sortBy === 'totalProducao') {
       diff = a.totalProducao - b.totalProducao
     } else if (sortBy === 'lastProductionMonth') {
-      const toNum = (m: string | null) => {
-        if (!m) return 0
-        const [mon, yr] = m.split('/')
-        const mm: Record<string,string> = { jan:'01',fev:'02',mar:'03',abr:'04',mai:'05',jun:'06',jul:'07',ago:'08',set:'09',out:'10',nov:'11',dez:'12' }
-        return parseInt(`20${yr}${mm[mon] ?? '00'}`) || 0
-      }
-      diff = toNum(a.lastProductionMonth) - toNum(b.lastProductionMonth)
+      diff = monthToNum(a.lastProductionMonth) - monthToNum(b.lastProductionMonth)
+    } else if (sortBy === 'codigo') {
+      diff = a.codigo.localeCompare(b.codigo, 'pt-BR', { numeric: true })
+    } else if (sortBy === 'funcionarioCidade') {
+      diff = (a.funcionarioCidade ?? '').localeCompare(b.funcionarioCidade ?? '', 'pt-BR')
+    } else if (sortBy === 'status') {
+      diff = a.status.localeCompare(b.status)
     } else {
       diff = a.nome.localeCompare(b.nome, 'pt-BR')
     }

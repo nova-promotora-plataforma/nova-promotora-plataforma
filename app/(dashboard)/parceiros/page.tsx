@@ -218,12 +218,12 @@ export default function ParceirosPage() {
                     />
                   </th>
                   {([
-                    { label: 'Código',          col: null },
+                    { label: 'Código',          col: 'codigo' },
                     { label: 'Nome',             col: 'nome' },
-                    { label: 'Cidade / UF',      col: null },
+                    { label: 'Cidade / UF',      col: 'funcionarioCidade' },
                     { label: 'Último prod.',     col: 'lastProductionMonth' },
                     { label: 'Total acumulado',  col: 'totalProducao' },
-                    { label: 'Status',           col: null },
+                    { label: 'Status',           col: 'status' },
                     { label: '',                 col: null },
                   ] as { label: string; col: string | null }[]).map(({ label, col }) => (
                     <th
