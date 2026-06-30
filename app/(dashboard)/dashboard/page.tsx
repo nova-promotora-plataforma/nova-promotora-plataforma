@@ -29,7 +29,7 @@ interface KpiData {
 }
 
 type SortDir = 'asc' | 'desc'
-type SortCol = 'nome' | 'uf' | 'lastMonth' | 'total'
+type SortCol = 'nome' | 'uf' | 'lastMonth' | 'total' | 'status'
 
 export default function DashboardPage() {
   const [data, setData]       = useState<KpiData | null>(null)
@@ -69,7 +69,8 @@ export default function DashboardPage() {
           return parseInt(`20${yr}${mm[mon] ?? '00'}`) || 0
         }
         diff = toNum(a.lastMonth) - toNum(b.lastMonth)
-      } else diff = a.total - b.total
+      } else if (sortCol === 'status') diff = a.status.localeCompare(b.status)
+      else diff = a.total - b.total
       return sortDir === 'desc' ? -diff : diff
     })
   }, [data, sortCol, sortDir])()
@@ -150,7 +151,7 @@ export default function DashboardPage() {
                       { label: 'UF',              col: 'uf'        },
                       { label: 'Último registro', col: 'lastMonth' },
                       { label: 'Total acumulado', col: 'total'     },
-                      { label: 'Status',          col: null        },
+                      { label: 'Status',          col: 'status'    },
                     ] as { label: string; col: SortCol | null }[]).map(({ label, col }) => (
                       <th
                         key={label}
