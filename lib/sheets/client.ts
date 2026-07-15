@@ -1,31 +1,35 @@
-const SHEET1 = { id: '1I54OHatANESC5KVZggvif0knKD2IuCeL', gid: '1866816406' }
-const SHEET2 = { id: '1WOr68pYEjPIVQkTOk7NasS96dfGBJdCo', gid: '1311285376' }
+const SHEET_ID = '1WOr68pYEjPIVQkTOk7NasS96dfGBJdCo'
 
-async function fetchOneCSV(id: string, gid: string): Promise<string> {
-  const url = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`
+export const CONVENIOS = [
+  { key: 'todos',              label: 'Todos',              gid: '1311285376' },
+  { key: 'inss',               label: 'INSS',               gid: '1564763958' },
+  { key: 'fgts',               label: 'FGTS',               gid: '688074922'  },
+  { key: 'credito_trabalhador', label: 'Crédito Trabalhador', gid: '1714509462' },
+  { key: 'demais',             label: 'Demais Convênios',   gid: '922735149'  },
+]
+
+export async function fetchSheetByGid(gid: string): Promise<string> {
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`
   const res = await fetch(url, { cache: 'no-store' })
-  if (!res.ok) throw new Error(`Erro ao buscar planilha ${id}: ${res.status}`)
+  if (!res.ok) throw new Error(`Erro ao buscar aba gid=${gid}: ${res.status}`)
   const buf = await res.arrayBuffer()
   return new TextDecoder('utf-8').decode(buf)
 }
 
-// Retorna rows da planilha principal (legado — usada por rotas que processam CSV diretamente)
+// Aba principal "Todos" — usada para listagem e KPIs
 export async function fetchSheetCSV(): Promise<string> {
-  return fetchOneCSV(SHEET1.id, SHEET1.gid)
+  return fetchSheetByGid(CONVENIOS[0].gid)
 }
 
-// Retorna rows de ambas as planilhas como arrays independentes para merge com headers próprios
+// Todas as abas em paralelo para merge (usado por fetchAllPartners)
 export async function fetchAllSheetRows(): Promise<{ rows1: string[][], rows2: string[][] }> {
-  const [csv1, csv2] = await Promise.all([
-    fetchOneCSV(SHEET1.id, SHEET1.gid),
-    fetchOneCSV(SHEET2.id, SHEET2.gid),
-  ])
-  return { rows1: parseCSV(csv1), rows2: parseCSV(csv2) }
+  // Legado: rows1 vazio, rows2 = aba Todos
+  const csv = await fetchSheetCSV()
+  return { rows1: [], rows2: parseCSV(csv) }
 }
 
 /**
- * Parser CSV que suporta campos com quebras de linha dentro de aspas
- * (necessário para os cabeçalhos "Comparativo em Valores\n(mai/21 - abr/21)")
+ * Parser CSV com suporte a campos multilinhas entre aspas
  */
 export function parseCSV(csv: string): string[][] {
   const rows: string[][] = []
@@ -37,12 +41,12 @@ export function parseCSV(csv: string): string[][] {
     const ch = csv[i]
 
     if (ch === '"') {
-      if (inQuote && csv[i + 1] === '"') { cur += '"'; i++ }  // aspas duplas escapadas
+      if (inQuote && csv[i + 1] === '"') { cur += '"'; i++ }
       else inQuote = !inQuote
     } else if (ch === ',' && !inQuote) {
       row.push(cur); cur = ''
     } else if (ch === '\r' && !inQuote) {
-      // ignora \r isolado
+      // ignora \r
     } else if (ch === '\n' && !inQuote) {
       row.push(cur); cur = ''
       if (row.length > 0) rows.push(row)
@@ -51,7 +55,6 @@ export function parseCSV(csv: string): string[][] {
       cur += ch
     }
   }
-  // última célula / linha
   if (cur || row.length) { row.push(cur); rows.push(row) }
 
   return rows

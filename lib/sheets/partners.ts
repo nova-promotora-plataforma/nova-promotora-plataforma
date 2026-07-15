@@ -1,4 +1,4 @@
-import { fetchAllSheetRows } from './client'
+import { fetchSheetCSV, parseCSV } from './client'
 
 const MONTH_RE = /^[a-z]{3}\/\d{2}$/i
 export const MONTH_MAP: Record<string, string> = {
@@ -34,10 +34,15 @@ export interface PartnerRow {
   lastProductionDate:  Date   | null
   status:              'ATIVO' | 'INATIVO'
   isEligible:          boolean
-  monthlyData:         Record<string, number>  // label -> valor
+  monthlyData:         Record<string, number>
 }
 
-function extractFromRows(rows: string[][], sixtyDaysAgo: Date): PartnerRow[] {
+export async function fetchAllPartners(): Promise<PartnerRow[]> {
+  const sixtyDaysAgo = new Date()
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
+
+  const csv  = await fetchSheetCSV()
+  const rows = parseCSV(csv)
   if (rows.length < 2) return []
 
   const headers = rows[0]
@@ -48,7 +53,7 @@ function extractFromRows(rows: string[][], sixtyDaysAgo: Date): PartnerRow[] {
   const idxUF     = headers.findIndex(h => norm(h) === 'uf')
   const idxTel    = headers.findIndex(h => ['telefone oficial', 'telefone_oficial'].includes(norm(h)))
   const idxEmail  = headers.findIndex(h => ['email oficial', 'email_oficial'].includes(norm(h)))
-  const idxTotal  = headers.findIndex(h => norm(h).includes('total em produ') || norm(h) === 'total')
+  const idxTotal  = headers.findIndex(h => norm(h) === 'total' || norm(h).includes('total em produ'))
 
   const monthCols: { idx: number; label: string; date: Date }[] = []
   headers.forEach((h, i) => {
@@ -70,20 +75,21 @@ function extractFromRows(rows: string[][], sixtyDaysAgo: Date): PartnerRow[] {
     let lastCol: { label: string; date: Date } | null = null
 
     for (let i = monthCols.length - 1; i >= 0; i--) {
-      const mc = monthCols[i]
+      const mc  = monthCols[i]
       const val = parseBRL(row[mc.idx])
       if (val > 0) {
         monthlyData[mc.label] = val
         if (!lastCol) lastCol = mc
       }
     }
-    // fill remaining months with values
     for (const mc of monthCols) {
-      const val = parseBRL(row[mc.idx])
-      if (!(mc.label in monthlyData) && val > 0) monthlyData[mc.label] = val
+      if (!(mc.label in monthlyData)) {
+        const val = parseBRL(row[mc.idx])
+        if (val > 0) monthlyData[mc.label] = val
+      }
     }
 
-    const totalRaw   = idxTotal >= 0 ? parseBRL(row[idxTotal]) : Object.values(monthlyData).reduce((a,b)=>a+b,0)
+    const total      = idxTotal >= 0 ? parseBRL(row[idxTotal]) : Object.values(monthlyData).reduce((a,b)=>a+b,0)
     const isEligible = lastCol !== null
     const isAtivo    = lastCol ? lastCol.date >= sixtyDaysAgo : false
 
@@ -92,9 +98,9 @@ function extractFromRows(rows: string[][], sixtyDaysAgo: Date): PartnerRow[] {
       nome:                toTitleCase(row[idxNome]?.trim() ?? ''),
       funcionarioCidade:   row[idxCidade]?.trim() ? toTitleCase(row[idxCidade].trim()) : null,
       uf:                  row[idxUF]?.trim().toUpperCase() || null,
-      telefoneOficial:     idxTel >= 0  ? (row[idxTel]?.trim()   || null) : null,
+      telefoneOficial:     idxTel  >= 0 ? (row[idxTel]?.trim()   || null) : null,
       emailOficial:        idxEmail >= 0 ? (row[idxEmail]?.trim() || null) : null,
-      totalProducao:       totalRaw,
+      totalProducao:       total,
       lastProductionMonth: lastCol?.label ?? null,
       lastProductionDate:  lastCol?.date  ?? null,
       status:              isAtivo ? 'ATIVO' : 'INATIVO',
@@ -104,56 +110,4 @@ function extractFromRows(rows: string[][], sixtyDaysAgo: Date): PartnerRow[] {
   }
 
   return result
-}
-
-export async function fetchAllPartners(): Promise<PartnerRow[]> {
-  const sixtyDaysAgo = new Date()
-  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
-
-  const { rows1, rows2 } = await fetchAllSheetRows()
-
-  const partners1 = extractFromRows(rows1, sixtyDaysAgo)
-  const partners2 = extractFromRows(rows2, sixtyDaysAgo)
-
-  // Merge by codigo: prefer the record with more monthly data
-  const map = new Map<string, PartnerRow>()
-
-  for (const p of partners1) {
-    map.set(p.codigo, p)
-  }
-  for (const p of partners2) {
-    const existing = map.get(p.codigo)
-    if (!existing) {
-      map.set(p.codigo, p)
-    } else {
-      // Merge: combine monthlyData and pick the most complete record
-      const merged = Object.keys(p.monthlyData).length >= Object.keys(existing.monthlyData).length ? p : existing
-      const combinedMonthly = { ...existing.monthlyData, ...p.monthlyData }
-      // Recalculate last production from combined data
-      const allMonths = Object.keys(combinedMonthly)
-        .map(label => {
-          const [mon, yr] = label.split('/')
-          const m = MONTH_MAP[mon]
-          return m ? { label, date: new Date(`20${yr}-${m}-01`) } : null
-        })
-        .filter(Boolean) as { label: string; date: Date }[]
-      allMonths.sort((a, b) => b.date.getTime() - a.date.getTime())
-      const lastCol = allMonths[0] ?? null
-
-      const total = Object.values(combinedMonthly).reduce((a, b) => a + b, 0)
-      const isAtivo = lastCol ? lastCol.date >= sixtyDaysAgo : false
-
-      map.set(p.codigo, {
-        ...merged,
-        monthlyData:         combinedMonthly,
-        totalProducao:       total,
-        lastProductionMonth: lastCol?.label ?? null,
-        lastProductionDate:  lastCol?.date  ?? null,
-        status:              isAtivo ? 'ATIVO' : 'INATIVO',
-        isEligible:          lastCol !== null,
-      })
-    }
-  }
-
-  return Array.from(map.values())
 }
