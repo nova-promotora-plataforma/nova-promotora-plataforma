@@ -4,14 +4,15 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Users, Megaphone, RefreshCw,
-  Settings, ChevronLeft, ChevronRight, Building2,
+  Settings, ChevronLeft, ChevronRight, Building2, Layers,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV = [
   { label: 'Principal', items: [
     { href: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
-    { href: '/parceiros',  icon: Users,           label: 'Parceiros' },
+    { href: '/convenios',  icon: Layers,           label: 'Convênios' },
+    { href: '/parceiros',  icon: Users,            label: 'Parceiros' },
     { href: '/campanhas',  icon: Megaphone,        label: 'Campanhas' },
   ]},
   { label: 'Sistema', items: [
