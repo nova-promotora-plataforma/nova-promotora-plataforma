@@ -1,13 +1,26 @@
-const SHEET_ID = '1I54OHatANESC5KVZggvif0knKD2IuCeL'
-const GID      = '1866816406'
+const SHEET1 = { id: '1I54OHatANESC5KVZggvif0knKD2IuCeL', gid: '1866816406' }
+const SHEET2 = { id: '1WOr68pYEjPIVQkTOk7NasS96dfGBJdCo', gid: '1311285376' }
 
-export async function fetchSheetCSV(): Promise<string> {
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`
+async function fetchOneCSV(id: string, gid: string): Promise<string> {
+  const url = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`
   const res = await fetch(url, { cache: 'no-store' })
-  if (!res.ok) throw new Error(`Erro ao buscar planilha: ${res.status}`)
-  // Decodifica explicitamente como UTF-8
+  if (!res.ok) throw new Error(`Erro ao buscar planilha ${id}: ${res.status}`)
   const buf = await res.arrayBuffer()
   return new TextDecoder('utf-8').decode(buf)
+}
+
+// Retorna rows da planilha principal (legado — usada por rotas que processam CSV diretamente)
+export async function fetchSheetCSV(): Promise<string> {
+  return fetchOneCSV(SHEET1.id, SHEET1.gid)
+}
+
+// Retorna rows de ambas as planilhas como arrays independentes para merge com headers próprios
+export async function fetchAllSheetRows(): Promise<{ rows1: string[][], rows2: string[][] }> {
+  const [csv1, csv2] = await Promise.all([
+    fetchOneCSV(SHEET1.id, SHEET1.gid),
+    fetchOneCSV(SHEET2.id, SHEET2.gid),
+  ])
+  return { rows1: parseCSV(csv1), rows2: parseCSV(csv2) }
 }
 
 /**
