@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Users, Megaphone, RefreshCw,
-  Settings, ChevronLeft, ChevronRight, Building2, Layers,
+  Settings, ChevronLeft, ChevronRight, Building2, Layers, Send,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -14,6 +14,7 @@ const NAV = [
     { href: '/convenios',  icon: Layers,           label: 'Convênios' },
     { href: '/parceiros',  icon: Users,            label: 'Parceiros' },
     { href: '/campanhas',  icon: Megaphone,        label: 'Campanhas' },
+    { href: '/disparos',   icon: Send,             label: 'Disparos'  },
   ]},
   { label: 'Sistema', items: [
     { href: '/sync',   icon: RefreshCw, label: 'Sincronização' },
