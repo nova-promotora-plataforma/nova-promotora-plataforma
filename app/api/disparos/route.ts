@@ -90,16 +90,15 @@ Temos condições especiais de reativação para parceiros com o seu histórico.
 }
 
 interface PartnerResult {
-  codigo:      string
-  nome:        string
-  telefone:    string | null
-  uf:          string | null
+  codigo:        string
+  nome:          string
+  telefone:      string | null
+  uf:            string | null
   totalProducao: number
   mediaProducao: number
   diasInativo:   number
   tempoLabel:    string
   convenio:      string
-  mensagem:      string
 }
 
 export async function GET(req: NextRequest) {
@@ -211,15 +210,6 @@ export async function GET(req: NextRequest) {
     // Telefone (pega o primeiro disponível)
     const telefone = idxTel >= 0 ? (row[idxTel]?.trim() || null) : null
 
-    const mensagem = gerarMensagem({
-      nome:        toTitleCase(row[idxNome]?.trim() ?? ''),
-      tempoLabel,
-      diasInativo,
-      convenio:    bestConvLabel,
-      media,
-      total,
-    })
-
     results.push({
       codigo:        code,
       nome:          toTitleCase(row[idxNome]?.trim() ?? ''),
@@ -230,7 +220,6 @@ export async function GET(req: NextRequest) {
       diasInativo,
       tempoLabel,
       convenio:      bestConvLabel,
-      mensagem,
     })
   }
 
