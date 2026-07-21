@@ -210,9 +210,13 @@ export async function GET(req: NextRequest) {
     // Telefone (pega o primeiro disponível)
     const telefone = idxTel >= 0 ? (row[idxTel]?.trim() || null) : null
 
+    const nomeRaw = row[idxNome]?.trim() ?? ''
+    // Ignora linhas onde o nome é vazio ou começa com dígito (CPF/código)
+    if (!nomeRaw || /^\d/.test(nomeRaw)) continue
+
     results.push({
       codigo:        code,
-      nome:          toTitleCase(row[idxNome]?.trim() ?? ''),
+      nome:          toTitleCase(nomeRaw),
       telefone,
       uf:            row[idxUF]?.trim().toUpperCase() || null,
       totalProducao: Math.round(total),

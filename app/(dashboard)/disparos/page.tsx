@@ -47,9 +47,15 @@ interface Partner {
   convenio:      string
 }
 
+// Retorna a primeira palavra do nome que seja letra (ignora números/CPF)
+function primeiroNome(nome: string): string {
+  const palavra = nome.split(' ').find(w => /^[a-zA-ZÀ-ú]{2,}$/.test(w))
+  return palavra ?? nome.split(' ')[0]
+}
+
 // Monta as 4 variáveis do template Meta para cada parceiro
 function buildVars(p: Partner) {
-  const v1 = p.nome.split(' ')[0]                          // {{1}} primeiro nome
+  const v1 = primeiroNome(p.nome)                          // {{1}} primeiro nome
   const v2 = `${fmt(p.mediaProducao)}/mês`                 // {{2}} média mensal
   const v3 = `${p.tempoLabel} sem produção conosco`        // {{3}} situação atual
   const v4 = p.convenio                                    // {{4}} convênio
