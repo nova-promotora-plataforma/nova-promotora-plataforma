@@ -92,7 +92,7 @@ Temos condições especiais de reativação para parceiros com o seu histórico.
 interface PartnerResult {
   codigo:        string
   nome:          string
-  telefone:      string | null
+  telefones:     string[]   // todos os números encontrados, deduplicados
   uf:            string | null
   totalProducao: number
   mediaProducao: number
@@ -122,7 +122,9 @@ export async function GET(req: NextRequest) {
   const idxCodigo = headers.findIndex(h => norm(h) === 'codigo')
   const idxNome   = headers.findIndex(h => norm(h) === 'nome')
   const idxUF     = headers.findIndex(h => norm(h) === 'uf')
-  const idxTel    = headers.findIndex(h => ['telefone', 'celular', 'celular_comercial', 'telefone_com'].includes(norm(h)))
+  // Todos os campos de telefone úteis para WhatsApp (exclui ramal)
+  const TEL_COLS = ['telefone', 'telefone_com', 'celular', 'telefone_comercial_1', 'telefone_comercial_2', 'celular_comercial']
+  const idxTels  = TEL_COLS.map(col => headers.findIndex(h => norm(h) === col)).filter(i => i >= 0)
   const idxTotal  = headers.findIndex(h => norm(h) === 'total' || norm(h).includes('total em produ'))
 
   const monthCols: { idx: number; label: string; date: Date }[] = []
@@ -207,17 +209,19 @@ export async function GET(req: NextRequest) {
     // Média mensal (meses com produção)
     const media = monthsWithProduction > 0 ? Math.round(total / monthsWithProduction) : 0
 
-    // Telefone (pega o primeiro disponível)
-    const telefone = idxTel >= 0 ? (row[idxTel]?.trim() || null) : null
-
     const nomeRaw = row[idxNome]?.trim() ?? ''
     // Ignora linhas onde o nome é vazio ou começa com dígito (CPF/código)
     if (!nomeRaw || /^\d/.test(nomeRaw)) continue
 
+    // Coleta todos os telefones únicos (remove vazios e duplicatas)
+    const telefones = Array.from(new Set(
+      idxTels.map(i => row[i]?.trim()).filter((v): v is string => !!v && v.length > 5)
+    ))
+
     results.push({
       codigo:        code,
       nome:          toTitleCase(nomeRaw),
-      telefone,
+      telefones,
       uf:            row[idxUF]?.trim().toUpperCase() || null,
       totalProducao: Math.round(total),
       mediaProducao: media,

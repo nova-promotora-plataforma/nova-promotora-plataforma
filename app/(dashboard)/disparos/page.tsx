@@ -38,7 +38,7 @@ Teve alguma mudança na sua operação ou estratégia nesse período?`
 interface Partner {
   codigo:        string
   nome:          string
-  telefone:      string | null
+  telefones:     string[]
   uf:            string | null
   totalProducao: number
   mediaProducao: number
@@ -96,12 +96,14 @@ export default function DisparosPage() {
 
   function exportCSV() {
     if (!results?.length) return
-    // Formato Meta: telefone + uma coluna por variável ({{1}} a {{4}})
-    const header = ['telefone', '{{1}} nome', '{{2}} media_mensal', '{{3}} situacao', '{{4}} convenio']
+    // Formato Meta: telefone principal + alternativas + 4 variáveis do template
+    const header = ['telefone', 'telefone_2', 'telefone_3', '{{1}} nome', '{{2}} media_mensal', '{{3}} situacao', '{{4}} convenio']
     const rows = results.map(p => {
       const { v1, v2, v3, v4 } = buildVars(p)
       return [
-        p.telefone ?? '',
+        p.telefones[0] ?? '',
+        p.telefones[1] ?? '',
+        p.telefones[2] ?? '',
         v1,
         v2,
         v3,
@@ -230,10 +232,18 @@ export default function DisparosPage() {
                       <tr key={p.codigo} className="hover:bg-white/[0.02] transition-nova">
                         <td className="px-4 py-2.5">
                           <p className="font-medium text-[var(--nova-text)] truncate max-w-[180px]">{p.nome}</p>
-                          <p className="text-[0.625rem] text-[var(--nova-text-dim)] font-mono">{p.codigo}</p>
-                          {p.telefone && (
-                            <p className="text-[0.625rem] text-[var(--nova-text-dim)]">{p.telefone}</p>
-                          )}
+                          <p className="text-[0.625rem] text-[var(--nova-text-dim)] font-mono mb-0.5">{p.codigo}</p>
+                          {p.telefones.length === 0 ? (
+                            <p className="text-[0.625rem] text-red-400">Sem telefone</p>
+                          ) : p.telefones.map((t, i) => (
+                            <p key={i} className={cn(
+                              'text-[0.625rem]',
+                              i === 0 ? 'text-[var(--nova-text-dim)]' : 'text-[var(--nova-text-dim)]/60'
+                            )}>
+                              {i > 0 && <span className="text-[var(--nova-text-dim)]/40 mr-1">↳</span>}
+                              {t}
+                            </p>
+                          ))}
                         </td>
                         <td className="px-4 py-2.5 text-[var(--nova-text-muted)]">{p.uf ?? '—'}</td>
                         <td className="px-4 py-2.5">
