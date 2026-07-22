@@ -62,11 +62,31 @@ function isBadNumber(v: string) {
   if (!v || v === '.' || v === '0') return true
   const digits = v.replace(/\D/g, '')
   if (digits.length < 8) return true
-  // Números falsos: todos iguais, zeros, placeholders
   if (/^0+$/.test(digits)) return true
   if (/^(9)\1+$/.test(digits)) return true
   if (/^(20202020|99999999|22222222|11111111)/.test(digits)) return true
+  // Sequências repetitivas de 2 dígitos: 20202020, 12121212, etc.
+  if (/^(\d{2})\1{3,}/.test(digits)) return true
   return false
+}
+
+// Ordem de preferência: celular > celular_comercial > demais
+const TEL_PRIORITY = [
+  'celular',
+  'celular_comercial',
+  'telefone',
+  'telefone_com',
+  'telefone_comercial_1',
+  'telefone_comercial_2',
+]
+
+function melhorTelefone(telefones: TelField[]): string {
+  const map = Object.fromEntries(telefones.map(t => [t.col, t.valor]))
+  for (const col of TEL_PRIORITY) {
+    const v = map[col] ?? ''
+    if (!isBadNumber(v)) return v
+  }
+  return ''
 }
 
 // Retorna a primeira palavra do nome que seja letra (ignora números/CPF)
@@ -119,11 +139,12 @@ export default function DisparosPage() {
   function exportCSV() {
     if (!results?.length) return
     const telCols = ['telefone', 'telefone_com', 'celular', 'telefone_comercial_1', 'telefone_comercial_2', 'celular_comercial']
-    const header = [...telCols, '{{1}} nome', '{{2}} media_mensal', '{{3}} situacao', '{{4}} convenio']
+    const header = ['telefone_principal', ...telCols, '{{1}} nome', '{{2}} media_mensal', '{{3}} situacao', '{{4}} convenio']
     const rows = results.map(p => {
       const { v1, v2, v3, v4 } = buildVars(p)
       const telMap = Object.fromEntries(p.telefones.map(t => [t.col, t.valor]))
       return [
+        melhorTelefone(p.telefones),
         ...telCols.map(c => telMap[c] ?? ''),
         v1, v2, v3, v4,
       ]
@@ -251,9 +272,20 @@ export default function DisparosPage() {
                         <td className="px-4 py-2.5">
                           <p className="font-medium text-[var(--nova-text)] truncate max-w-[180px]">{p.nome}</p>
                           <p className="text-[0.625rem] text-[var(--nova-text-dim)] font-mono mb-1">{p.codigo}</p>
-                          {p.telefones.filter(t => t.valor).length === 0 ? (
-                            <p className="text-[0.625rem] text-red-400">Sem telefone no cadastro</p>
-                          ) : p.telefones.filter(t => t.valor).map(t => (
+                          {/* Telefone principal */}
+                          {(() => {
+                            const principal = melhorTelefone(p.telefones)
+                            return principal ? (
+                              <p className="text-xs font-semibold text-emerald-400 mb-1 flex items-center gap-1">
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                                {principal}
+                              </p>
+                            ) : (
+                              <p className="text-[0.625rem] text-red-400 mb-1">Sem número válido</p>
+                            )
+                          })()}
+                          {/* Todos os campos */}
+                          {p.telefones.filter(t => t.valor).map(t => (
                             <p key={t.col} className="text-[0.625rem] flex items-center gap-1">
                               <span className={cn(
                                 'inline-block w-1.5 h-1.5 rounded-full flex-shrink-0',
