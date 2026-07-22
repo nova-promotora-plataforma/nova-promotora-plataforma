@@ -119,13 +119,16 @@ export async function GET(req: NextRequest) {
   if (todosRows.length < 2) return NextResponse.json({ partners: [], total: 0 })
 
   const headers   = todosRows[0]
-  const idxCodigo = headers.findIndex(h => norm(h) === 'codigo')
-  const idxNome   = headers.findIndex(h => norm(h) === 'nome')
-  const idxUF     = headers.findIndex(h => norm(h) === 'uf')
+  const idxCodigo = headers.findIndex(h => normKey(h) === 'codigo')
+  const idxNome   = headers.findIndex(h => normKey(h) === 'nome')
+  const idxUF     = headers.findIndex(h => normKey(h) === 'uf')
+  // Normaliza header substituindo espaços por underscore para comparação
+  const normKey = (s: string) => norm(s).replace(/\s+/g, '_')
+
   // Todos os campos de telefone úteis para WhatsApp (exclui ramal)
   const TEL_COLS = ['telefone', 'telefone_com', 'celular', 'telefone_comercial_1', 'telefone_comercial_2', 'celular_comercial']
-  const idxTels  = TEL_COLS.map(col => ({ col, idx: headers.findIndex(h => norm(h) === col) }))
-  const idxTotal  = headers.findIndex(h => norm(h) === 'total' || norm(h).includes('total em produ'))
+  const idxTels  = TEL_COLS.map(col => ({ col, idx: headers.findIndex(h => normKey(h) === col) }))
+  const idxTotal  = headers.findIndex(h => normKey(h) === 'total' || normKey(h).includes('total_em_produ') || norm(h).includes('total em produ'))
 
   const monthCols: { idx: number; label: string; date: Date }[] = []
   headers.forEach((h, i) => {
@@ -145,8 +148,9 @@ export async function GET(req: NextRequest) {
     const convRows = parseCSV(conveniosCSVs[ci])
     if (convRows.length < 2) continue
     const ch = convRows[0]
-    const ciCodigo = ch.findIndex(h => norm(h) === 'codigo')
-    const ciTotal  = ch.findIndex(h => norm(h) === 'total' || norm(h).includes('total em produ'))
+    const ciNormKey = (s: string) => norm(s).replace(/\s+/g, '_')
+    const ciCodigo = ch.findIndex(h => ciNormKey(h) === 'codigo')
+    const ciTotal  = ch.findIndex(h => ciNormKey(h) === 'total' || ciNormKey(h).includes('total_em_produ') || norm(h).includes('total em produ'))
     const ciMonths: number[] = []
     ch.forEach((h, i) => { if (MONTH_RE.test(h.trim())) ciMonths.push(i) })
 
