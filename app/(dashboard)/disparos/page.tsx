@@ -35,16 +35,38 @@ Analisei sua operação e vi que em {{4}} você chegou a produzir {{2}} aqui com
 
 Teve alguma mudança na sua operação ou estratégia nesse período?`
 
+interface TelField { col: string; valor: string }
+
 interface Partner {
   codigo:        string
   nome:          string
-  telefones:     string[]
+  telefones:     TelField[]
   uf:            string | null
   totalProducao: number
   mediaProducao: number
   diasInativo:   number
   tempoLabel:    string
   convenio:      string
+}
+
+const TEL_LABELS: Record<string, string> = {
+  telefone:             'Telefone',
+  telefone_com:         'Tel. comercial',
+  celular:              'Celular',
+  telefone_comercial_1: 'Comercial 1',
+  telefone_comercial_2: 'Comercial 2',
+  celular_comercial:    'Celular comercial',
+}
+
+function isBadNumber(v: string) {
+  if (!v || v === '.' || v === '0') return true
+  const digits = v.replace(/\D/g, '')
+  if (digits.length < 8) return true
+  // Números falsos: todos iguais, zeros, placeholders
+  if (/^0+$/.test(digits)) return true
+  if (/^(9)\1+$/.test(digits)) return true
+  if (/^(20202020|99999999|22222222|11111111)/.test(digits)) return true
+  return false
 }
 
 // Retorna a primeira palavra do nome que seja letra (ignora números/CPF)
@@ -96,18 +118,14 @@ export default function DisparosPage() {
 
   function exportCSV() {
     if (!results?.length) return
-    // Formato Meta: telefone principal + alternativas + 4 variáveis do template
-    const header = ['telefone', 'telefone_2', 'telefone_3', '{{1}} nome', '{{2}} media_mensal', '{{3}} situacao', '{{4}} convenio']
+    const telCols = ['telefone', 'telefone_com', 'celular', 'telefone_comercial_1', 'telefone_comercial_2', 'celular_comercial']
+    const header = [...telCols, '{{1}} nome', '{{2}} media_mensal', '{{3}} situacao', '{{4}} convenio']
     const rows = results.map(p => {
       const { v1, v2, v3, v4 } = buildVars(p)
+      const telMap = Object.fromEntries(p.telefones.map(t => [t.col, t.valor]))
       return [
-        p.telefones[0] ?? '',
-        p.telefones[1] ?? '',
-        p.telefones[2] ?? '',
-        v1,
-        v2,
-        v3,
-        v4,
+        ...telCols.map(c => telMap[c] ?? ''),
+        v1, v2, v3, v4,
       ]
     })
     const csv = [header, ...rows]
@@ -232,16 +250,21 @@ export default function DisparosPage() {
                       <tr key={p.codigo} className="hover:bg-white/[0.02] transition-nova">
                         <td className="px-4 py-2.5">
                           <p className="font-medium text-[var(--nova-text)] truncate max-w-[180px]">{p.nome}</p>
-                          <p className="text-[0.625rem] text-[var(--nova-text-dim)] font-mono mb-0.5">{p.codigo}</p>
-                          {p.telefones.length === 0 ? (
-                            <p className="text-[0.625rem] text-red-400">Sem telefone</p>
-                          ) : p.telefones.map((t, i) => (
-                            <p key={i} className={cn(
-                              'text-[0.625rem]',
-                              i === 0 ? 'text-[var(--nova-text-dim)]' : 'text-[var(--nova-text-dim)]/60'
-                            )}>
-                              {i > 0 && <span className="text-[var(--nova-text-dim)]/40 mr-1">↳</span>}
-                              {t}
+                          <p className="text-[0.625rem] text-[var(--nova-text-dim)] font-mono mb-1">{p.codigo}</p>
+                          {p.telefones.filter(t => t.valor).length === 0 ? (
+                            <p className="text-[0.625rem] text-red-400">Sem telefone no cadastro</p>
+                          ) : p.telefones.filter(t => t.valor).map(t => (
+                            <p key={t.col} className="text-[0.625rem] flex items-center gap-1">
+                              <span className={cn(
+                                'inline-block w-1.5 h-1.5 rounded-full flex-shrink-0',
+                                isBadNumber(t.valor) ? 'bg-red-400' : 'bg-emerald-400'
+                              )} />
+                              <span className="text-[var(--nova-text-dim)]/50 w-20 flex-shrink-0">
+                                {TEL_LABELS[t.col] ?? t.col}
+                              </span>
+                              <span className={isBadNumber(t.valor) ? 'text-red-400/70' : 'text-[var(--nova-text-dim)]'}>
+                                {t.valor}
+                              </span>
                             </p>
                           ))}
                         </td>

@@ -92,7 +92,7 @@ Temos condições especiais de reativação para parceiros com o seu histórico.
 interface PartnerResult {
   codigo:        string
   nome:          string
-  telefones:     string[]   // todos os números encontrados, deduplicados
+  telefones:     { col: string; valor: string }[]  // todos os campos, um por coluna
   uf:            string | null
   totalProducao: number
   mediaProducao: number
@@ -124,7 +124,7 @@ export async function GET(req: NextRequest) {
   const idxUF     = headers.findIndex(h => norm(h) === 'uf')
   // Todos os campos de telefone úteis para WhatsApp (exclui ramal)
   const TEL_COLS = ['telefone', 'telefone_com', 'celular', 'telefone_comercial_1', 'telefone_comercial_2', 'celular_comercial']
-  const idxTels  = TEL_COLS.map(col => headers.findIndex(h => norm(h) === col)).filter(i => i >= 0)
+  const idxTels  = TEL_COLS.map(col => ({ col, idx: headers.findIndex(h => norm(h) === col) }))
   const idxTotal  = headers.findIndex(h => norm(h) === 'total' || norm(h).includes('total em produ'))
 
   const monthCols: { idx: number; label: string; date: Date }[] = []
@@ -213,10 +213,10 @@ export async function GET(req: NextRequest) {
     // Ignora linhas onde o nome é vazio ou começa com dígito (CPF/código)
     if (!nomeRaw || /^\d/.test(nomeRaw)) continue
 
-    // Coleta todos os telefones únicos (remove vazios e duplicatas)
-    const telefones = Array.from(new Set(
-      idxTels.map(i => row[i]?.trim()).filter((v): v is string => !!v && v.length > 5)
-    ))
+    // Coleta todos os campos de telefone separadamente (sem deduplicar)
+    const telefones = idxTels
+      .filter(({ idx }) => idx >= 0)
+      .map(({ col, idx }) => ({ col, valor: row[idx]?.trim() ?? '' }))
 
     results.push({
       codigo:        code,
