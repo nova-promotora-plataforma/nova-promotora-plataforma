@@ -119,11 +119,11 @@ export async function GET(req: NextRequest) {
   if (todosRows.length < 2) return NextResponse.json({ partners: [], total: 0 })
 
   const headers   = todosRows[0]
+  // Normaliza header substituindo espaços por underscore para comparação
+  const normKey = (s: string) => norm(s).replace(/\s+/g, '_')
   const idxCodigo = headers.findIndex(h => normKey(h) === 'codigo')
   const idxNome   = headers.findIndex(h => normKey(h) === 'nome')
   const idxUF     = headers.findIndex(h => normKey(h) === 'uf')
-  // Normaliza header substituindo espaços por underscore para comparação
-  const normKey = (s: string) => norm(s).replace(/\s+/g, '_')
 
   // Todos os campos de telefone úteis para WhatsApp (exclui ramal)
   const TEL_COLS = ['telefone', 'telefone_com', 'celular', 'telefone_comercial_1', 'telefone_comercial_2', 'celular_comercial']
