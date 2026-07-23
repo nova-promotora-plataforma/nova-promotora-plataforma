@@ -13,15 +13,25 @@ const INATIVIDADE: Record<string, { min: number; max: number; label: string }> =
   '3a':  { min: 1095, max: 99999, label: '3 anos ou mais' },
 }
 
-// Faixas de produção total em reais
+// Produção mínima global — parceiros abaixo disso nunca aparecem
+const PRODUCAO_MINIMA = 25000
+
+// Faixas de produção total em reais (todas partem do mínimo global)
 const PRODUCAO: Record<string, { min: number; max: number; label: string }> = {
-  '0-50':    { min: 0,       max: 50000,   label: 'até R$ 50 mil'        },
-  '50-150':  { min: 50000,   max: 150000,  label: 'R$ 50 mil a R$ 150 mil' },
+  '25-50':   { min: 25000,   max: 50000,   label: 'R$ 25 mil a R$ 50 mil'   },
+  '50-150':  { min: 50000,   max: 150000,  label: 'R$ 50 mil a R$ 150 mil'  },
   '150-300': { min: 150000,  max: 300000,  label: 'R$ 150 mil a R$ 300 mil' },
   '300-500': { min: 300000,  max: 500000,  label: 'R$ 300 mil a R$ 500 mil' },
-  '500-1M':  { min: 500000,  max: 1000000, label: 'R$ 500 mil a R$ 1 milhão' },
-  '1M+':     { min: 1000000, max: Infinity, label: 'acima de R$ 1 milhão'  },
+  '500-1M':  { min: 500000,  max: 1000000, label: 'R$ 500 mil a R$ 1 milhão'},
+  '1M+':     { min: 1000000, max: Infinity, label: 'acima de R$ 1 milhão'   },
 }
+
+// Blocklist do financeiro — códigos de parceiros que não devem receber disparo
+// Adicionar os códigos quando a lista chegar
+const BLOCKLIST: Set<string> = new Set([
+  // '12345',
+  // '67890',
+])
 
 function gerarMensagem(params: {
   nome: string
@@ -187,9 +197,12 @@ export async function GET(req: NextRequest) {
     if (diasInativo < 60) continue // ainda ativo (menos de 2 meses)
 
     const total = idxTotal >= 0 ? parseBRL(row[idxTotal]) : 0
-    if (total <= 0) continue // ignora produção zero
+    if (total < PRODUCAO_MINIMA) continue // abaixo do mínimo global de R$ 25 mil
 
-    // Aplicar filtros
+    // Blocklist do financeiro
+    if (BLOCKLIST.has(code)) continue
+
+    // Aplicar filtros de segmentação
     if (inativoRange && (diasInativo < inativoRange.min || diasInativo > inativoRange.max)) continue
     if (producaoRange && (total < producaoRange.min || total >= producaoRange.max)) continue
 
