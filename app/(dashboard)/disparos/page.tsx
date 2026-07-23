@@ -89,10 +89,19 @@ function melhorTelefone(telefones: TelField[]): string {
   return ''
 }
 
-// Retorna a primeira palavra do nome que seja letra (ignora números/CPF)
+// Partículas que não contam como nome
+const PARTICLES = new Set(['de','da','do','das','dos','e','a','o','em','na','no','di','du','van','von'])
+
+// Retorna mínimo 2 palavras de nome real, pulando partículas e iniciais (A. B.)
 function primeiroNome(nome: string): string {
-  const palavra = nome.split(' ').find(w => /^[a-zA-ZÀ-ú]{2,}$/.test(w))
-  return palavra ?? nome.split(' ')[0]
+  const words = nome.trim().split(/\s+/)
+  // Palavras que são nome próprio: ≥2 letras, sem ponto, sem dígito, não partícula
+  const nameWords = words.filter(w =>
+    /^[a-zA-ZÀ-ú]{2,}$/.test(w) && !PARTICLES.has(w.toLowerCase())
+  )
+  if (nameWords.length === 0) return nome          // fallback: nome completo
+  if (nameWords.length === 1) return nameWords[0]  // só um nome real
+  return nameWords.slice(0, 2).join(' ')           // primeiros 2 nomes reais
 }
 
 // Monta as 4 variáveis do template Meta para cada parceiro
