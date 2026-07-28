@@ -122,12 +122,31 @@ function renderTemplate(p: Partner) {
     .replace('{{4}}', v4)
 }
 
+function buildCSV(partners: Partner[], suffix: string): void {
+  const telCols = ['telefone', 'telefone_com', 'celular', 'telefone_comercial_1', 'telefone_comercial_2', 'celular_comercial']
+  const header = ['telefone_principal', ...telCols, '{{1}} nome', '{{2}} media_mensal', '{{3}} situacao', '{{4}} convenio']
+  const rows = partners.map(p => {
+    const { v1, v2, v3, v4 } = buildVars(p)
+    const telMap = Object.fromEntries(p.telefones.map(t => [t.col, t.valor]))
+    return [melhorTelefone(p.telefones), ...telCols.map(c => telMap[c] ?? ''), v1, v2, v3, v4]
+  })
+  const csv = [header, ...rows]
+    .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';'))
+    .join('\n')
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href = url; a.download = `elegiveis_sem_debito_${suffix}.csv`; a.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function ElegiveisPage() {
-  const [inatividade, setInatividade] = useState('')
-  const [producao,    setProducao]    = useState('')
-  const [loading,     setLoading]     = useState(false)
-  const [results,     setResults]     = useState<Partner[] | null>(null)
-  const [preview,     setPreview]     = useState<Partner | null>(null)
+  const [inatividade,  setInatividade]  = useState('')
+  const [producao,     setProducao]     = useState('')
+  const [loading,      setLoading]      = useState(false)
+  const [exportingAll, setExportingAll] = useState(false)
+  const [results,      setResults]      = useState<Partner[] | null>(null)
+  const [preview,      setPreview]      = useState<Partner | null>(null)
 
   const buscar = useCallback(async () => {
     if (!inatividade || !producao) return
@@ -145,29 +164,23 @@ export default function ElegiveisPage() {
     }
   }, [inatividade, producao])
 
+  const exportarBaseCompleta = useCallback(async () => {
+    setExportingAll(true)
+    try {
+      const res  = await fetch('/api/disparos')
+      const json = await res.json()
+      const all: Partner[] = json.partners ?? []
+      if (all.length) buildCSV(all, 'completa')
+    } catch {
+      // silently fail
+    } finally {
+      setExportingAll(false)
+    }
+  }, [])
+
   function exportCSV() {
     if (!results?.length) return
-    const telCols = ['telefone', 'telefone_com', 'celular', 'telefone_comercial_1', 'telefone_comercial_2', 'celular_comercial']
-    const header = ['telefone_principal', ...telCols, '{{1}} nome', '{{2}} media_mensal', '{{3}} situacao', '{{4}} convenio']
-    const rows = results.map(p => {
-      const { v1, v2, v3, v4 } = buildVars(p)
-      const telMap = Object.fromEntries(p.telefones.map(t => [t.col, t.valor]))
-      return [
-        melhorTelefone(p.telefones),
-        ...telCols.map(c => telMap[c] ?? ''),
-        v1, v2, v3, v4,
-      ]
-    })
-    const csv = [header, ...rows]
-      .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';'))
-      .join('\n')
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href     = url
-    a.download = `elegiveis_sem_debito_${inatividade}_${producao}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    buildCSV(results, `${inatividade}_${producao}`)
   }
 
   const canSearch = !!inatividade && !!producao
@@ -231,16 +244,22 @@ export default function ElegiveisPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 pt-1">
+          <div className="flex items-center gap-3 pt-1 flex-wrap">
             <Button variant="blue" onClick={buscar} disabled={!canSearch || loading}>
               {loading
                 ? <><Loader2 size={14} className="animate-spin" /> Buscando…</>
-                : <><Search size={14} /> Buscar parceiros</>
+                : <><Search size={14} /> Buscar por filtro</>
+              }
+            </Button>
+            <Button variant="primary" onClick={exportarBaseCompleta} disabled={exportingAll}>
+              {exportingAll
+                ? <><Loader2 size={14} className="animate-spin" /> Gerando…</>
+                : <><Download size={14} /> Exportar base completa</>
               }
             </Button>
             {!canSearch && (
               <span className="text-xs text-[var(--nova-text-dim)]">
-                Selecione tempo inativo e faixa de produção para buscar
+                Ou use os filtros acima para segmentar antes de exportar
               </span>
             )}
           </div>
