@@ -17,6 +17,11 @@ const USERS: Record<string, { password: string; name: string; role: string }> = 
     name:     'Luiz Freitas',
     role:     'admin',
   },
+  'lucas.rosa@novapromotora.com': {
+    password: 'Nova@2026',
+    name:     'Lucas Rosa',
+    role:     'admin',
+  },
 }
 
 export async function POST(req: NextRequest) {
