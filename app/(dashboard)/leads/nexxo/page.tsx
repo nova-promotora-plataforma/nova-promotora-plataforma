@@ -158,6 +158,89 @@ function BaseView({ data, label }: { data: BaseData; label: string }) {
   )
 }
 
+// ─── Aba consolidada ──────────────────────────────────────────────────────────
+function TodasAsBasesView({ bases }: { bases: Record<string, BaseData> }) {
+  const allLoading = Object.values(bases).some(b => b.loading)
+
+  if (allLoading) return (
+    <div className="flex items-center justify-center h-40 text-[var(--nova-text-dim)]">
+      <Loader2 size={18} className="animate-spin mr-2" /> Cruzando todas as bases…
+    </div>
+  )
+
+  // Merge: deduplicar por codigo, somar total, manter status mais recente, agregar origens
+  const merged = new Map<string, Parceiro & { origens: string[] }>()
+  for (const base of BASES) {
+    for (const p of bases[base.id]?.parceiros ?? []) {
+      if (merged.has(p.codigo)) {
+        const ex = merged.get(p.codigo)!
+        ex.total += p.total
+        ex.origens.push(base.label)
+      } else {
+        merged.set(p.codigo, { ...p, origens: [base.label] })
+      }
+    }
+  }
+  const parceiros = Array.from(merged.values()).sort((a, b) => b.total - a.total)
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-md border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] overflow-hidden">
+        <div className="px-4 py-3 border-b border-[var(--nova-border)]">
+          <p className="text-sm font-semibold text-[var(--nova-text)]">
+            {parceiros.length} parceiros identificados em todas as bases
+          </p>
+          <p className="text-xs text-[var(--nova-text-dim)] mt-0.5">
+            Parceiros presentes em múltiplas bases aparecem uma vez com produção somada · ordenados por total acumulado
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-[var(--nova-bg-elev-2)]">
+                {['Código', 'Nome', 'Cidade / UF', 'Último prod.', 'Total acumulado', 'Bases', 'Status'].map(h => (
+                  <th key={h} className="px-4 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--nova-border)]/50">
+              {parceiros.map(p => (
+                <tr key={p.codigo} className="hover:bg-white/[0.02] transition-nova">
+                  <td className="px-4 py-2.5 text-xs font-mono text-[var(--nova-text-dim)]">{p.codigo}</td>
+                  <td className="px-4 py-2.5">
+                    <p className="font-medium text-[var(--nova-text)] truncate max-w-[200px]">{p.nome}</p>
+                  </td>
+                  <td className="px-4 py-2.5 text-[var(--nova-text-muted)]">
+                    {p.cidade && p.uf ? `${p.cidade} / ${p.uf}` : p.uf ?? '—'}
+                  </td>
+                  <td className="px-4 py-2.5 text-[var(--nova-text-muted)]">{p.ultimaProd ?? '—'}</td>
+                  <td className="px-4 py-2.5 font-semibold text-[var(--nova-text)]">{fmt(p.total)}</td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex flex-wrap gap-1">
+                      {p.origens.map(o => (
+                        <span key={o} className="text-[0.5625rem] px-1.5 py-0.5 rounded-sm bg-[var(--nova-bg-elev-2)] border border-[var(--nova-border)] text-[var(--nova-text-dim)]">
+                          {o}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Badge variant={p.status === 'ATIVO' ? 'ativo' : 'inativo'} dot>
+                      {p.status === 'ATIVO' ? 'Ativo' : 'Inativo'}
+                    </Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function LeadsPage() {
   const [activeTab, setActiveTab] = useState('nexxo')
@@ -239,11 +322,23 @@ export default function LeadsPage() {
                 )}
               </button>
             ))}
+            <button
+              onClick={() => setActiveTab('todas')}
+              className={cn(
+                'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-nova',
+                activeTab === 'todas'
+                  ? 'border-[var(--nova-blue)] text-[var(--nova-text)]'
+                  : 'border-transparent text-[var(--nova-text-dim)] hover:text-[var(--nova-text)]'
+              )}
+            >
+              Todas as bases
+            </button>
           </div>
 
           {BASES.map(b => activeTab === b.id && (
             <BaseView key={b.id} data={bases[b.id]} label={b.label} />
           ))}
+          {activeTab === 'todas' && <TodasAsBasesView bases={bases} />}
         </section>
 
       </main>
