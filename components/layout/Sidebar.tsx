@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Users, Megaphone, RefreshCw,
-  Settings, ChevronLeft, ChevronRight, Building2, Layers, Send, UserCheck, BarChart2,
+  Settings, ChevronLeft, ChevronRight, Building2, Layers, Send, UserCheck, BarChart2, GitMerge,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -19,6 +19,9 @@ const NAV = [
   ]},
   { label: 'Campanhas', items: [
     { href: '/campanhas/disparo-maio-2026', icon: BarChart2, label: 'Powerhub INSS · maio/26' },
+  ]},
+  { label: 'Leads', items: [
+    { href: '/leads/nexxo', icon: GitMerge, label: 'Nexxo × Parceiros' },
   ]},
   { label: 'Sistema', items: [
     { href: '/sync',   icon: RefreshCw, label: 'Sincronização' },
