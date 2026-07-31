@@ -10,18 +10,20 @@ import { cn } from '@/lib/utils'
 
 const NAV = [
   { label: 'Principal', items: [
-    { href: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
-    { href: '/convenios',  icon: Layers,           label: 'Convênios' },
-    { href: '/parceiros',  icon: Users,            label: 'Parceiros' },
-    { href: '/campanhas',  icon: Megaphone,        label: 'Campanhas' },
-    { href: '/disparos',   icon: Send,             label: 'Disparos'         },
-    { href: '/elegiveis',  icon: UserCheck,        label: 'Elegíveis s/ débito' },
+    { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard'  },
+    { href: '/convenios', icon: Layers,          label: 'Convênios'  },
+    { href: '/parceiros', icon: Users,           label: 'Parceiros'  },
+    { href: '/campanhas', icon: Megaphone,       label: 'Campanhas'  },
   ]},
-  { label: 'Campanhas', items: [
-    { href: '/campanhas/disparo-maio-2026', icon: BarChart2, label: 'Powerhub INSS · maio/26' },
+  { label: 'Parceiros Inativos', items: [
+    { href: '/disparos',  icon: Send,      label: 'Disparos'            },
+    { href: '/elegiveis', icon: UserCheck, label: 'Elegíveis s/ débito' },
   ]},
   { label: 'Leads', items: [
     { href: '/leads/nexxo', icon: GitMerge, label: 'Nexxo × Parceiros' },
+  ]},
+  { label: 'Análises', items: [
+    { href: '/campanhas/disparo-maio-2026', icon: BarChart2, label: 'Powerhub INSS · maio/26' },
   ]},
   { label: 'Sistema', items: [
     { href: '/sync',   icon: RefreshCw, label: 'Sincronização' },
