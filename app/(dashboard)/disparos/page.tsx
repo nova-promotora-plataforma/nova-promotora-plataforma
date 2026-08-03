@@ -19,7 +19,8 @@ const INATIVIDADE_OPTIONS = [
 ]
 
 const PRODUCAO_OPTIONS = [
-  { key: '25-50',   label: 'R$ 25 mil – R$ 50 mil'   },
+  { key: '0-20',    label: 'Até R$ 20 mil'            },
+  { key: '20-50',   label: 'R$ 20 mil – R$ 50 mil'   },
   { key: '50-150',  label: 'R$ 50 mil – R$ 150 mil'  },
   { key: '150-300', label: 'R$ 150 mil – R$ 300 mil' },
   { key: '300-500', label: 'R$ 300 mil – R$ 500 mil' },

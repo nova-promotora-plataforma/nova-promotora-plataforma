@@ -14,11 +14,12 @@ const INATIVIDADE: Record<string, { min: number; max: number; label: string }> =
 }
 
 // Produção mínima global — parceiros abaixo disso nunca aparecem
-const PRODUCAO_MINIMA = 25000
+const PRODUCAO_MINIMA = 0
 
-// Faixas de produção total em reais (todas partem do mínimo global)
+// Faixas de produção total em reais
 const PRODUCAO: Record<string, { min: number; max: number; label: string }> = {
-  '25-50':   { min: 25000,   max: 50000,   label: 'R$ 25 mil a R$ 50 mil'   },
+  '0-20':    { min: 0,       max: 20000,   label: 'Até R$ 20 mil'           },
+  '20-50':   { min: 20000,   max: 50000,   label: 'R$ 20 mil a R$ 50 mil'   },
   '50-150':  { min: 50000,   max: 150000,  label: 'R$ 50 mil a R$ 150 mil'  },
   '150-300': { min: 150000,  max: 300000,  label: 'R$ 150 mil a R$ 300 mil' },
   '300-500': { min: 300000,  max: 500000,  label: 'R$ 300 mil a R$ 500 mil' },
