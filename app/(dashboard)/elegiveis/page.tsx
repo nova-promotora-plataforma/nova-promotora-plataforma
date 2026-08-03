@@ -19,13 +19,11 @@ const INATIVIDADE_OPTIONS = [
 ]
 
 const PRODUCAO_OPTIONS = [
-  { key: '0-20',    label: 'Até R$ 20 mil'            },
-  { key: '20-50',   label: 'R$ 20 mil – R$ 50 mil'   },
-  { key: '50-150',  label: 'R$ 50 mil – R$ 150 mil'  },
-  { key: '150-300', label: 'R$ 150 mil – R$ 300 mil' },
-  { key: '300-500', label: 'R$ 300 mil – R$ 500 mil' },
-  { key: '500-1M',  label: 'R$ 500 mil – R$ 1 milhão'},
-  { key: '1M+',     label: 'Acima de R$ 1 milhão'    },
+  { key: '0-5',    label: 'Até R$ 5 mil/mês'              },
+  { key: '5-25',   label: 'R$ 5 mil – R$ 25 mil/mês'     },
+  { key: '25-50',  label: 'R$ 25 mil – R$ 50 mil/mês'    },
+  { key: '50-100', label: 'R$ 50 mil – R$ 100 mil/mês'   },
+  { key: '100+',   label: 'Acima de R$ 100 mil/mês'      },
 ]
 
 // Template fixo da Meta — espelha exatamente o modelo cadastrado no Gerenciador
@@ -225,7 +223,7 @@ export default function ElegiveisPage() {
 
           <div>
             <p className="text-[0.625rem] font-medium uppercase tracking-widest text-[var(--nova-text-dim)] mb-2">
-              Faixa de produção total acumulada
+              Média mensal de produção
             </p>
             <div className="flex flex-wrap gap-2">
               {PRODUCAO_OPTIONS.map(opt => (

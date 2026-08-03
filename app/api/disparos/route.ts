@@ -16,15 +16,13 @@ const INATIVIDADE: Record<string, { min: number; max: number; label: string }> =
 // Produção mínima global — parceiros abaixo disso nunca aparecem
 const PRODUCAO_MINIMA = 0
 
-// Faixas de produção total em reais
+// Faixas de média mensal de produção em reais
 const PRODUCAO: Record<string, { min: number; max: number; label: string }> = {
-  '0-20':    { min: 0,       max: 20000,   label: 'Até R$ 20 mil'           },
-  '20-50':   { min: 20000,   max: 50000,   label: 'R$ 20 mil a R$ 50 mil'   },
-  '50-150':  { min: 50000,   max: 150000,  label: 'R$ 50 mil a R$ 150 mil'  },
-  '150-300': { min: 150000,  max: 300000,  label: 'R$ 150 mil a R$ 300 mil' },
-  '300-500': { min: 300000,  max: 500000,  label: 'R$ 300 mil a R$ 500 mil' },
-  '500-1M':  { min: 500000,  max: 1000000, label: 'R$ 500 mil a R$ 1 milhão'},
-  '1M+':     { min: 1000000, max: Infinity, label: 'acima de R$ 1 milhão'   },
+  '0-5':    { min: 0,     max: 5000,   label: 'Até R$ 5 mil/mês'              },
+  '5-25':   { min: 5000,  max: 25000,  label: 'R$ 5 mil – R$ 25 mil/mês'     },
+  '25-50':  { min: 25000, max: 50000,  label: 'R$ 25 mil – R$ 50 mil/mês'    },
+  '50-100': { min: 50000, max: 100000, label: 'R$ 50 mil – R$ 100 mil/mês'   },
+  '100+':   { min: 100000, max: Infinity, label: 'Acima de R$ 100 mil/mês'   },
 }
 
 // Blocklist do financeiro — parceiros com saldo negativo (Relatorio 27.JUL)
@@ -787,7 +785,11 @@ export async function GET(req: NextRequest) {
 
     // Aplicar filtros de segmentação
     if (inativoRange && (diasInativo < inativoRange.min || diasInativo > inativoRange.max)) continue
-    if (producaoRange && (total < producaoRange.min || total >= producaoRange.max)) continue
+
+    // Média mensal (meses com produção) — calculada antes do filtro de produção
+    const media = monthsWithProduction > 0 ? Math.round(total / monthsWithProduction) : 0
+
+    if (producaoRange && (media < producaoRange.min || media >= producaoRange.max)) continue
 
     // Tempo inativo em label legível
     let tempoLabel = `${diasInativo} dias`
@@ -805,9 +807,6 @@ export async function GET(req: NextRequest) {
       if (v > bestConvTotal) { bestConvTotal = v; bestConvKey = k }
     }
     const bestConvLabel = convenioAbas.find(c => c.key === bestConvKey)?.label ?? 'Consignado'
-
-    // Média mensal (meses com produção)
-    const media = monthsWithProduction > 0 ? Math.round(total / monthsWithProduction) : 0
 
     const nomeRaw = row[idxNome]?.trim() ?? ''
     // Ignora linhas onde o nome é vazio ou começa com dígito (CPF/código)
