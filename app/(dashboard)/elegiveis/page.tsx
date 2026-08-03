@@ -19,11 +19,11 @@ const INATIVIDADE_OPTIONS = [
 ]
 
 const PRODUCAO_OPTIONS = [
-  { key: '0-5',    label: 'Até R$ 5 mil/mês'              },
-  { key: '5-25',   label: 'R$ 5 mil – R$ 25 mil/mês'     },
-  { key: '25-50',  label: 'R$ 25 mil – R$ 50 mil/mês'    },
-  { key: '50-100', label: 'R$ 50 mil – R$ 100 mil/mês'   },
-  { key: '100+',   label: 'Acima de R$ 100 mil/mês'      },
+  { key: '0-20',    label: 'Até R$ 20 mil/mês'             },
+  { key: '20-50',   label: 'R$ 20 mil – R$ 50 mil/mês'    },
+  { key: '50-100',  label: 'R$ 50 mil – R$ 100 mil/mês'   },
+  { key: '100-200', label: 'R$ 100 mil – R$ 200 mil/mês'  },
+  { key: '200+',    label: 'Acima de R$ 200 mil/mês'       },
 ]
 
 // Template fixo da Meta — espelha exatamente o modelo cadastrado no Gerenciador

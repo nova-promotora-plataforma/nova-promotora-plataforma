@@ -18,11 +18,11 @@ const PRODUCAO_MINIMA = 0
 
 // Faixas de média mensal de produção em reais
 const PRODUCAO: Record<string, { min: number; max: number; label: string }> = {
-  '0-5':    { min: 0,     max: 5000,   label: 'Até R$ 5 mil/mês'              },
-  '5-25':   { min: 5000,  max: 25000,  label: 'R$ 5 mil – R$ 25 mil/mês'     },
-  '25-50':  { min: 25000, max: 50000,  label: 'R$ 25 mil – R$ 50 mil/mês'    },
-  '50-100': { min: 50000, max: 100000, label: 'R$ 50 mil – R$ 100 mil/mês'   },
-  '100+':   { min: 100000, max: Infinity, label: 'Acima de R$ 100 mil/mês'   },
+  '0-20':   { min: 0,      max: 20000,  label: 'Até R$ 20 mil/mês'            },
+  '20-50':  { min: 20000,  max: 50000,  label: 'R$ 20 mil – R$ 50 mil/mês'   },
+  '50-100': { min: 50000,  max: 100000, label: 'R$ 50 mil – R$ 100 mil/mês'  },
+  '100-200':{ min: 100000, max: 200000, label: 'R$ 100 mil – R$ 200 mil/mês' },
+  '200+':   { min: 200000, max: Infinity, label: 'Acima de R$ 200 mil/mês'   },
 }
 
 // Blocklist do financeiro — parceiros com saldo negativo (Relatorio 27.JUL)
