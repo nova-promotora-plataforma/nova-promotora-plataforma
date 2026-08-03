@@ -121,17 +121,24 @@ function renderTemplate(p: Partner) {
     .replace('{{4}}', v4)
 }
 
+type SortKey = 'mediaProducao' | 'diasInativo' | null
+type SortDir = 'asc' | 'desc'
+
 export default function DisparosPage() {
   const [inatividade, setInatividade] = useState('')
   const [producao,    setProducao]    = useState('')
   const [loading,     setLoading]     = useState(false)
   const [results,     setResults]     = useState<Partner[] | null>(null)
   const [preview,     setPreview]     = useState<Partner | null>(null)
+  const [sortKey,     setSortKey]     = useState<SortKey>(null)
+  const [sortDir,     setSortDir]     = useState<SortDir>('asc')
+  const [selected,    setSelected]    = useState<Set<string>>(new Set())
 
   const buscar = useCallback(async () => {
     if (!inatividade || !producao) return
     setLoading(true)
     setResults(null)
+    setSelected(new Set())
     try {
       const params = new URLSearchParams({ inatividade, producao })
       const res  = await fetch(`/api/disparos?${params}`)
@@ -144,11 +151,36 @@ export default function DisparosPage() {
     }
   }, [inatividade, producao])
 
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('asc') }
+  }
+
+  const sortedResults = results ? [...results].sort((a, b) => {
+    if (!sortKey) return 0
+    const diff = a[sortKey] - b[sortKey]
+    return sortDir === 'asc' ? diff : -diff
+  }) : []
+
+  const allSelected = !!results?.length && selected.size === results.length
+  function toggleAll() {
+    if (allSelected) setSelected(new Set())
+    else setSelected(new Set(results!.map(p => p.codigo)))
+  }
+  function toggleOne(codigo: string) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(codigo) ? next.delete(codigo) : next.add(codigo)
+      return next
+    })
+  }
+
   function exportCSV() {
     if (!results?.length) return
+    const base = selected.size > 0 ? results.filter(p => selected.has(p.codigo)) : results
     const telCols = ['telefone', 'telefone_com', 'celular', 'telefone_comercial_1', 'telefone_comercial_2', 'celular_comercial']
     const header = ['telefone_principal', ...telCols, '{{1}} nome', '{{2}} media_mensal', '{{3}} situacao', '{{4}} convenio']
-    const rows = results.map(p => {
+    const rows = base.map(p => {
       const { v1, v2, v3, v4 } = buildVars(p)
       const telMap = Object.fromEntries(p.telefones.map(t => [t.col, t.valor]))
       return [
@@ -257,7 +289,8 @@ export default function DisparosPage() {
               </div>
               {results.length > 0 && (
                 <Button variant="primary" size="sm" onClick={exportCSV}>
-                  <Download size={14} /> Exportar CSV
+                  <Download size={14} />
+                  {selected.size > 0 ? `Exportar ${selected.size} selecionados` : 'Exportar CSV'}
                 </Button>
               )}
             </div>
@@ -267,16 +300,42 @@ export default function DisparosPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-[var(--nova-bg-elev-2)]">
-                      {['Parceiro', 'UF', 'Convênio principal', 'Tempo inativo', 'Média/mês', 'Preview'].map(h => (
-                        <th key={h} className="px-4 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">
-                          {h}
+                        <th className="pl-4 pr-2 py-2.5 w-8">
+                          <input
+                            type="checkbox"
+                            checked={allSelected}
+                            onChange={toggleAll}
+                            className="accent-[var(--nova-blue)] cursor-pointer"
+                            title="Selecionar todos"
+                          />
                         </th>
-                      ))}
+                        {['Parceiro', 'UF', 'Convênio principal', 'Tempo inativo'].map(h => (
+                          <th key={h} className="px-4 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">
+                            {h}
+                          </th>
+                        ))}
+                        <th
+                          className="px-4 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)] cursor-pointer select-none hover:text-[var(--nova-text)] transition-nova"
+                          onClick={() => toggleSort('mediaProducao')}
+                        >
+                          Média/mês {sortKey === 'mediaProducao' ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+                        </th>
+                        <th className="px-4 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">
+                          Preview
+                        </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--nova-border)]/50">
-                    {results.map(p => (
-                      <tr key={p.codigo} className="hover:bg-white/[0.02] transition-nova">
+                    {sortedResults.map(p => (
+                      <tr key={p.codigo} className={cn('hover:bg-white/[0.02] transition-nova', selected.has(p.codigo) && 'bg-[var(--nova-blue)]/5')}>
+                        <td className="pl-4 pr-2 py-2.5 w-8">
+                          <input
+                            type="checkbox"
+                            checked={selected.has(p.codigo)}
+                            onChange={() => toggleOne(p.codigo)}
+                            className="accent-[var(--nova-blue)] cursor-pointer"
+                          />
+                        </td>
                         <td className="px-4 py-2.5">
                           <p className="font-medium text-[var(--nova-text)] truncate max-w-[180px]">{p.nome}</p>
                           <p className="text-[0.625rem] text-[var(--nova-text-dim)] font-mono mb-1">{p.codigo}</p>
