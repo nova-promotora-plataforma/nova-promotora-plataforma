@@ -152,6 +152,7 @@ export default function ElegiveisPage() {
   const [sortKey,      setSortKey]      = useState<SortKey>(null)
   const [sortDir,      setSortDir]      = useState<SortDir>('asc')
   const [selected,     setSelected]     = useState<Set<string>>(new Set())
+  const [busca,        setBusca]        = useState('')
 
   const buscar = useCallback(async () => {
     if (!inatividade || !producao) return
@@ -195,16 +196,21 @@ export default function ElegiveisPage() {
     else { setSortKey(key); setSortDir('asc') }
   }
 
-  const sortedResults = results ? [...results].sort((a, b) => {
+  const filteredResults = results
+    ? results.filter(p => p.nome.toLowerCase().includes(busca.toLowerCase()) ||
+        p.codigo.includes(busca) || (p.uf ?? '').toLowerCase().includes(busca.toLowerCase()))
+    : []
+
+  const sortedResults = [...filteredResults].sort((a, b) => {
     if (!sortKey) return 0
     const diff = a[sortKey] - b[sortKey]
     return sortDir === 'asc' ? diff : -diff
-  }) : []
+  })
 
-  const allSelected = !!results?.length && selected.size === results.length
+  const allSelected = !!filteredResults.length && filteredResults.every(p => selected.has(p.codigo))
   function toggleAll() {
     if (allSelected) setSelected(new Set())
-    else setSelected(new Set(results!.map(p => p.codigo)))
+    else setSelected(new Set(filteredResults.map(p => p.codigo)))
   }
   function toggleOne(codigo: string) {
     setSelected(prev => {
@@ -299,12 +305,14 @@ export default function ElegiveisPage() {
         {/* Resultados */}
         {results !== null && (
           <div className="rounded-md border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--nova-border)]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--nova-border)] flex-wrap gap-3">
               <div>
                 <p className="text-sm font-semibold text-[var(--nova-text)]">
                   {results.length === 0
                     ? 'Nenhum parceiro encontrado'
-                    : `${results.length} parceiro${results.length !== 1 ? 's' : ''} encontrado${results.length !== 1 ? 's' : ''}`}
+                    : busca
+                      ? `${sortedResults.length} de ${results.length} parceiros`
+                      : `${results.length} parceiro${results.length !== 1 ? 's' : ''} encontrado${results.length !== 1 ? 's' : ''}`}
                 </p>
                 {results.length > 0 && (
                   <p className="text-xs text-[var(--nova-text-dim)] mt-0.5">
@@ -313,10 +321,22 @@ export default function ElegiveisPage() {
                 )}
               </div>
               {results.length > 0 && (
-                <Button variant="primary" size="sm" onClick={exportCSV}>
-                  <Download size={14} />
-                  {selected.size > 0 ? `Exportar ${selected.size} selecionados` : 'Exportar CSV'}
-                </Button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="relative">
+                    <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--nova-text-dim)]" />
+                    <input
+                      type="text"
+                      placeholder="Filtrar por nome, código, UF…"
+                      value={busca}
+                      onChange={e => setBusca(e.target.value)}
+                      className="pl-8 pr-3 py-1.5 text-xs rounded-sm border border-[var(--nova-border)] bg-[var(--nova-bg-elev-2)] text-[var(--nova-text)] placeholder:text-[var(--nova-text-dim)] focus:outline-none focus:border-[var(--nova-blue)]/60 w-56"
+                    />
+                  </div>
+                  <Button variant="primary" size="sm" onClick={exportCSV}>
+                    <Download size={14} />
+                    {selected.size > 0 ? `Exportar ${selected.size} selecionados` : 'Exportar CSV'}
+                  </Button>
+                </div>
               )}
             </div>
 
