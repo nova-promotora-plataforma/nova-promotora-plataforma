@@ -694,11 +694,11 @@ interface PartnerResult {
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
-  const faixaInatividade = searchParams.get('inatividade') ?? ''
-  const faixaProducao    = searchParams.get('producao')   ?? ''
+  const faixasInatividade = searchParams.getAll('inatividade').flatMap(v => v.split(',').filter(Boolean))
+  const faixasProducao    = searchParams.getAll('producao').flatMap(v => v.split(',').filter(Boolean))
 
-  const inativoRange = INATIVIDADE[faixaInatividade]
-  const producaoRange = PRODUCAO[faixaProducao]
+  const inativoRanges  = faixasInatividade.map(k => INATIVIDADE[k]).filter(Boolean)
+  const producaoRanges = faixasProducao.map(k => PRODUCAO[k]).filter(Boolean)
 
   // Busca aba Todos + 4 abas de convênio em paralelo
   const [todosCSV, ...conveniosCSVs] = await Promise.all([
@@ -783,13 +783,13 @@ export async function GET(req: NextRequest) {
     // Blocklist do financeiro
     if (BLOCKLIST.has(code)) continue
 
-    // Aplicar filtros de segmentação
-    if (inativoRange && (diasInativo < inativoRange.min || diasInativo > inativoRange.max)) continue
+    // Aplicar filtros de segmentação (OR dentro de cada dimensão)
+    if (inativoRanges.length > 0 && !inativoRanges.some(r => diasInativo >= r.min && diasInativo <= r.max)) continue
 
     // Média mensal (meses com produção) — calculada antes do filtro de produção
     const media = monthsWithProduction > 0 ? Math.round(total / monthsWithProduction) : 0
 
-    if (producaoRange && (media < producaoRange.min || media >= producaoRange.max)) continue
+    if (producaoRanges.length > 0 && !producaoRanges.some(r => media >= r.min && media < r.max)) continue
 
     // Tempo inativo em label legível
     let tempoLabel = `${diasInativo} dias`

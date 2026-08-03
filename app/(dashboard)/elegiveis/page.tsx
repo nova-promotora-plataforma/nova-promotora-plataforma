@@ -143,8 +143,8 @@ type SortKey = 'mediaProducao' | 'diasInativo' | null
 type SortDir = 'asc' | 'desc'
 
 export default function ElegiveisPage() {
-  const [inatividade,  setInatividade]  = useState('')
-  const [producao,     setProducao]     = useState('')
+  const [inatividade,  setInatividade]  = useState<string[]>([])
+  const [producao,     setProducao]     = useState<string[]>([])
   const [loading,      setLoading]      = useState(false)
   const [exportingAll, setExportingAll] = useState(false)
   const [results,      setResults]      = useState<Partner[] | null>(null)
@@ -155,12 +155,14 @@ export default function ElegiveisPage() {
   const [busca,        setBusca]        = useState('')
 
   const buscar = useCallback(async () => {
-    if (!inatividade || !producao) return
+    if (!inatividade.length || !producao.length) return
     setLoading(true)
     setResults(null)
     setSelected(new Set())
     try {
-      const params = new URLSearchParams({ inatividade, producao })
+      const params = new URLSearchParams()
+      inatividade.forEach(v => params.append('inatividade', v))
+      producao.forEach(v => params.append('producao', v))
       const res  = await fetch(`/api/disparos?${params}`)
       const json = await res.json()
       setResults(json.partners ?? [])
@@ -220,7 +222,11 @@ export default function ElegiveisPage() {
     })
   }
 
-  const canSearch = !!inatividade && !!producao
+  function toggle(list: string[], setList: (v: string[]) => void, key: string) {
+    setList(list.includes(key) ? list.filter(k => k !== key) : [...list, key])
+  }
+
+  const canSearch = inatividade.length > 0 && producao.length > 0
 
   return (
     <>
@@ -245,10 +251,10 @@ export default function ElegiveisPage() {
               {INATIVIDADE_OPTIONS.map(opt => (
                 <button
                   key={opt.key}
-                  onClick={() => setInatividade(prev => prev === opt.key ? '' : opt.key)}
+                  onClick={() => toggle(inatividade, setInatividade, opt.key)}
                   className={cn(
                     'px-3 py-1.5 rounded-sm text-sm border transition-nova',
-                    inatividade === opt.key
+                    inatividade.includes(opt.key)
                       ? 'bg-[var(--btn-blue-bg)] border-[var(--btn-blue-border)] text-[var(--btn-blue-text)]'
                       : 'border-[var(--nova-border)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text)] hover:border-[var(--nova-blue)]/40',
                   )}
@@ -267,10 +273,10 @@ export default function ElegiveisPage() {
               {PRODUCAO_OPTIONS.map(opt => (
                 <button
                   key={opt.key}
-                  onClick={() => setProducao(prev => prev === opt.key ? '' : opt.key)}
+                  onClick={() => toggle(producao, setProducao, opt.key)}
                   className={cn(
                     'px-3 py-1.5 rounded-sm text-sm border transition-nova',
-                    producao === opt.key
+                    producao.includes(opt.key)
                       ? 'bg-[var(--btn-blue-bg)] border-[var(--btn-blue-border)] text-[var(--btn-blue-text)]'
                       : 'border-[var(--nova-border)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text)] hover:border-[var(--nova-blue)]/40',
                   )}
