@@ -685,6 +685,8 @@ interface PartnerResult {
   nome:          string
   telefones:     { col: string; valor: string }[]  // todos os campos, um por coluna
   uf:            string | null
+  cidade:        string | null
+  bairro:        string | null
   totalProducao: number
   mediaProducao: number
   diasInativo:   number
