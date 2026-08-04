@@ -686,7 +686,6 @@ interface PartnerResult {
   telefones:     { col: string; valor: string }[]  // todos os campos, um por coluna
   uf:            string | null
   cidade:        string | null
-  bairro:        string | null
   totalProducao: number
   mediaProducao: number
   diasInativo:   number
@@ -718,7 +717,6 @@ export async function GET(req: NextRequest) {
   const idxNome    = headers.findIndex(h => normKey(h) === 'nome')
   const idxUF      = headers.findIndex(h => normKey(h) === 'uf')
   const idxCidade  = headers.findIndex(h => normKey(h).includes('cidade'))
-  const idxBairro  = headers.findIndex(h => normKey(h) === 'bairro')
 
   // Todos os campos de telefone úteis para WhatsApp (exclui ramal)
   const TEL_COLS = ['telefone', 'telefone_com', 'celular', 'telefone_comercial_1', 'telefone_comercial_2', 'celular_comercial']
@@ -827,7 +825,6 @@ export async function GET(req: NextRequest) {
       telefones,
       uf:            row[idxUF]?.trim().toUpperCase() || null,
       cidade:        idxCidade >= 0 ? toTitleCase(row[idxCidade]?.trim() ?? '') || null : null,
-      bairro:        idxBairro >= 0 ? toTitleCase(row[idxBairro]?.trim() ?? '') || null : null,
       totalProducao: Math.round(total),
       mediaProducao: media,
       diasInativo,
