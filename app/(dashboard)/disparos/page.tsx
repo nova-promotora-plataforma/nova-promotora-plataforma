@@ -188,11 +188,12 @@ export default function DisparosPage() {
     if (!results?.length) return
     const base = selected.size > 0 ? results.filter(p => selected.has(p.codigo)) : results
     const telCols = ['telefone', 'telefone_com', 'celular', 'telefone_comercial_1', 'telefone_comercial_2', 'celular_comercial']
-    const header = ['telefone_principal', ...telCols, '{{1}} nome', '{{2}} media_mensal', '{{3}} situacao', '{{4}} convenio', 'cidade', 'uf']
+    const header = ['codigo', 'telefone_principal', ...telCols, '{{1}} nome', '{{2}} media_mensal', '{{3}} situacao', '{{4}} convenio', 'cidade', 'uf']
     const rows = base.map(p => {
       const { v1, v2, v3, v4 } = buildVars(p)
       const telMap = Object.fromEntries(p.telefones.map(t => [t.col, t.valor]))
       return [
+        p.codigo,
         melhorTelefone(p.telefones),
         ...telCols.map(c => telMap[c] ?? ''),
         v1, v2, v3, v4,
