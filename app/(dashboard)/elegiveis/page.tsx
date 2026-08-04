@@ -42,6 +42,7 @@ interface Partner {
   telefones:     TelField[]
   uf:            string | null
   cidade:        string | null
+  bairro:        string | null
   totalProducao: number
   mediaProducao: number
   diasInativo:   number
@@ -124,11 +125,11 @@ function renderTemplate(p: Partner) {
 
 function buildCSV(partners: Partner[], suffix: string): void {
   const telCols = ['telefone', 'telefone_com', 'celular', 'telefone_comercial_1', 'telefone_comercial_2', 'celular_comercial']
-  const header = ['telefone_principal', ...telCols, '{{1}} nome', '{{2}} media_mensal', '{{3}} situacao', '{{4}} convenio', 'cidade', 'estado']
+  const header = ['telefone_principal', ...telCols, '{{1}} nome', '{{2}} media_mensal', '{{3}} situacao', '{{4}} convenio', 'cidade', 'bairro', 'uf']
   const rows = partners.map(p => {
     const { v1, v2, v3, v4 } = buildVars(p)
     const telMap = Object.fromEntries(p.telefones.map(t => [t.col, t.valor]))
-    return [melhorTelefone(p.telefones), ...telCols.map(c => telMap[c] ?? ''), v1, v2, v3, v4, p.cidade ?? '', p.uf ?? '']
+    return [melhorTelefone(p.telefones), ...telCols.map(c => telMap[c] ?? ''), v1, v2, v3, v4, p.cidade ?? '', p.bairro ?? '', p.uf ?? '']
   })
   const csv = [header, ...rows]
     .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';'))
