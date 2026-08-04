@@ -712,9 +712,10 @@ export async function GET(req: NextRequest) {
   const headers   = todosRows[0]
   // Normaliza header substituindo espaços por underscore para comparação
   const normKey = (s: string) => norm(s).replace(/\s+/g, '_')
-  const idxCodigo = headers.findIndex(h => normKey(h) === 'codigo')
-  const idxNome   = headers.findIndex(h => normKey(h) === 'nome')
-  const idxUF     = headers.findIndex(h => normKey(h) === 'uf')
+  const idxCodigo  = headers.findIndex(h => normKey(h) === 'codigo')
+  const idxNome    = headers.findIndex(h => normKey(h) === 'nome')
+  const idxUF      = headers.findIndex(h => normKey(h) === 'uf')
+  const idxCidade  = headers.findIndex(h => normKey(h) === 'funcionario_cidade' || normKey(h) === 'cidade')
 
   // Todos os campos de telefone úteis para WhatsApp (exclui ramal)
   const TEL_COLS = ['telefone', 'telefone_com', 'celular', 'telefone_comercial_1', 'telefone_comercial_2', 'celular_comercial']
@@ -822,6 +823,7 @@ export async function GET(req: NextRequest) {
       nome:          toTitleCase(nomeRaw),
       telefones,
       uf:            row[idxUF]?.trim().toUpperCase() || null,
+      cidade:        idxCidade >= 0 ? toTitleCase(row[idxCidade]?.trim() ?? '') || null : null,
       totalProducao: Math.round(total),
       mediaProducao: media,
       diasInativo,
