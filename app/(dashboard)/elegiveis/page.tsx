@@ -58,6 +58,12 @@ const TEL_LABELS: Record<string, string> = {
   celular_comercial:    'Celular comercial',
 }
 
+function formatCodigo(codigo: string): string {
+  const d = codigo.trim()
+  if (d.length === 2 || d.length === 3) return '0' + d
+  return d
+}
+
 function isBadNumber(v: string) {
   if (!v || v === '.' || v === '0') return true
   const digits = v.replace(/\D/g, '')
@@ -128,7 +134,7 @@ function buildCSV(partners: Partner[], suffix: string): void {
   const rows = partners.map(p => {
     const { v1, v2, v3, v4 } = buildVars(p)
     const telMap = Object.fromEntries(p.telefones.map(t => [t.col, t.valor]))
-    return [p.codigo, melhorTelefone(p.telefones), ...telCols.map(c => telMap[c] ?? ''), v1, v2, v3, v4, p.cidade ?? '', p.uf ?? '']
+    return [formatCodigo(p.codigo), melhorTelefone(p.telefones), ...telCols.map(c => telMap[c] ?? ''), v1, v2, v3, v4, p.cidade ?? '', p.uf ?? '']
   })
   const csv = [header, ...rows]
     .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';'))
