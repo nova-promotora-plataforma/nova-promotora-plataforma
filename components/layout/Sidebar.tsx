@@ -22,8 +22,8 @@ const NAV = [
   { label: 'Leads', items: [
     { href: '/leads/nexxo', icon: GitMerge, label: 'Nexxo × Parceiros' },
   ]},
-  { label: 'Análises', items: [
-    { href: '/campanhas/disparo-maio-2026', icon: BarChart2, label: 'Powerhub INSS · maio/26' },
+  { label: 'Campanhas de Disparo', items: [
+    { href: '/campanhas/disparos', icon: BarChart2, label: 'Resultados dos disparos' },
   ]},
   { label: 'Sistema', items: [
     { href: '/sync',   icon: RefreshCw, label: 'Sincronização' },
