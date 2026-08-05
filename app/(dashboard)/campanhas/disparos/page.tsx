@@ -55,6 +55,63 @@ const fmtN = (v: number) => new Intl.NumberFormat('pt-BR').format(v)
 
 const FUNNEL_COLORS = ['#6366f1', '#22c55e', '#3b82f6', '#f59e0b', '#ef4444']
 
+function BenchmarkBar({ campanhas }: { campanhas: Campanha[] }) {
+  const agg = campanhas.reduce(
+    (acc, c) => ({
+      total:     acc.total     + c.total,
+      enviados:  acc.enviados  + c.enviados,
+      entregues: acc.entregues + c.entregues,
+      lidos:     acc.lidos     + c.lidos,
+      respostas: acc.respostas + c.respostas,
+      falhas:    acc.falhas    + c.falhas,
+    }),
+    { total: 0, enviados: 0, entregues: 0, lidos: 0, respostas: 0, falhas: 0 },
+  )
+
+  const p = (num: number, den: number) => den > 0 ? (num / den) * 100 : 0
+
+  const metricas = [
+    { label: 'Taxa de envio',     value: p(agg.enviados,  agg.total),     color: '#6366f1', ref: `${fmtN(agg.enviados)} de ${fmtN(agg.total)}` },
+    { label: 'Taxa de entrega',   value: p(agg.entregues, agg.enviados),  color: '#22c55e', ref: `${fmtN(agg.entregues)} de ${fmtN(agg.enviados)}` },
+    { label: 'Taxa de leitura',   value: p(agg.lidos,     agg.entregues), color: '#3b82f6', ref: `${fmtN(agg.lidos)} de ${fmtN(agg.entregues)}` },
+    { label: 'Taxa de resposta',  value: p(agg.respostas, agg.entregues), color: '#f59e0b', ref: `${fmtN(agg.respostas)} de ${fmtN(agg.entregues)}` },
+    { label: 'Taxa de falha',     value: p(agg.falhas,    agg.total),     color: '#ef4444', ref: `${fmtN(agg.falhas)} de ${fmtN(agg.total)}` },
+  ]
+
+  return (
+    <div className="rounded-lg border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] overflow-hidden">
+      <div className="px-4 py-3 border-b border-[var(--nova-border)] flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold text-[var(--nova-text)]">Benchmark — média geral</p>
+          <p className="text-xs text-[var(--nova-text-dim)] mt-0.5">
+            Consolidado de {campanhas.length} disparo{campanhas.length !== 1 ? 's' : ''} · {fmtN(agg.total)} contatos no total
+          </p>
+        </div>
+        <span className="text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)] bg-[var(--nova-bg-elev-2)] px-2 py-1 rounded">
+          Base histórica
+        </span>
+      </div>
+      <div className="grid grid-cols-5 divide-x divide-[var(--nova-border)]">
+        {metricas.map(m => (
+          <div key={m.label} className="px-4 py-4 space-y-2">
+            <p className="text-[0.65rem] text-[var(--nova-text-dim)] uppercase tracking-wide">{m.label}</p>
+            <p className="text-2xl font-bold" style={{ color: m.color }}>
+              {m.value.toFixed(1)}%
+            </p>
+            <div className="h-1 rounded-full bg-[var(--nova-bg-elev-2)] overflow-hidden">
+              <div
+                className="h-full rounded-full"
+                style={{ width: Math.min(m.value, 100) + '%', background: m.color }}
+              />
+            </div>
+            <p className="text-[0.6rem] text-[var(--nova-text-dim)]">{m.ref}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function DisparosDashboardPage() {
   const [selectedId, setSelectedId] = useState(CAMPANHAS[0].id)
   const [open, setOpen] = useState(false)
@@ -258,6 +315,9 @@ export default function DisparosDashboardPage() {
             })}
           </div>
         </div>
+
+        {/* Benchmark médio de todos os disparos */}
+        <BenchmarkBar campanhas={CAMPANHAS} />
 
         {/* Tabela resumo */}
         <div className="rounded-lg border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] overflow-hidden">
