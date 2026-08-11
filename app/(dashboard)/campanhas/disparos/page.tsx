@@ -65,9 +65,9 @@ const CAMPANHAS: Campanha[] = [
     status: 'Concluída',
     total: 114,
     enviados: 91,
-    entregues: 85,
-    lidos: 16,
-    respostas: 4,
+    entregues: 86,
+    lidos: 25,
+    respostas: 6,
     falhas: 23,
   },
 ]
