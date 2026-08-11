@@ -612,6 +612,7 @@ const BLOCKLIST: Set<string> = new Set([
   "41042",
   "50937",
   "5709",
+  "53828",
 ])
 
 function gerarMensagem(params: {
