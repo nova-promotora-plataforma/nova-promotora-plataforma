@@ -114,7 +114,7 @@ function primeiroNome(nome: string): string {
 function buildVars(p: Partner) {
   const v1 = primeiroNome(p.nome)                          // {{1}} primeiro nome
   const v2 = `${fmt(p.mediaProducao)}/mês`                 // {{2}} média mensal
-  const v3 = `${p.tempoLabel} sem produção conosco`        // {{3}} situação atual
+  const v3 = `${p.tempoLabel} que você não opera com a Nova`  // {{3}} situação atual
   const v4 = p.convenio                                    // {{4}} convênio
   return { v1, v2, v3, v4 }
 }
