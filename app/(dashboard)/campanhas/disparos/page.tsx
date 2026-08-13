@@ -59,6 +59,18 @@ const CAMPANHAS: Campanha[] = [
     falhas: 80,
   },
   {
+    id: 'elegiveis-sem-debito-1a-50-100',
+    nome: 'Elegíveis Sem Débito 1 ano – R$50-100k',
+    data: '13/08/2026',
+    status: 'Concluída',
+    total: 126,
+    enviados: 104,
+    entregues: 97,
+    lidos: 11,
+    respostas: 15,
+    falhas: 22,
+  },
+  {
     id: 'elegiveis-sem-debito-1a-20-50',
     nome: 'Elegíveis Sem Débito 1 ano – R$20-50k',
     data: '12/08/2026',
