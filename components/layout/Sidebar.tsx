@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Users, Megaphone, RefreshCw,
-  Settings, ChevronLeft, ChevronRight, Building2, Layers, Send, UserCheck, BarChart2, GitMerge,
+  Settings, ChevronLeft, ChevronRight, Building2, Layers, Send, UserCheck, BarChart2, GitMerge, MapPin,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -24,6 +24,7 @@ const NAV = [
   ]},
   { label: 'Campanhas de Disparo', items: [
     { href: '/campanhas/disparos', icon: BarChart2, label: 'Resultados dos disparos' },
+    { href: '/campanhas/ariane',   icon: MapPin,    label: 'Grande Florianópolis'    },
   ]},
   { label: 'Sistema', items: [
     { href: '/sync',   icon: RefreshCw, label: 'Sincronização' },
