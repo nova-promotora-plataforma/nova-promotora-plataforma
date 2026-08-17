@@ -6,105 +6,98 @@ import { Badge } from '@/components/ui/Badge'
 import { Loader2, Search, Users, Phone, CheckCircle2, XCircle, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// Cidades da Grande Florianópolis (normalizadas sem acento para comparação)
-const CIDADES_GF = ['florianopolis', 'sao jose', 'biguacu', 'palhoca']
-const CIDADE_DISPLAY: Record<string, string> = {
-  'florianopolis': 'Florianópolis',
-  'sao jose':      'São José',
-  'biguacu':       'Biguaçu',
-  'palhoca':       'Palhoça',
+const SHEET_ID = '104gzMOGUgku7Wnx7rLKfHvz2HckdZvX-vEWdEJgzSNA'
+
+interface Lead {
+  codigo:          string
+  nome:            string
+  telefonePrincipal: string
+  telefoneFixo:    string
+  celular:         string
+  media:           string
+  inatividade:     string
+  cidade:          string
+  uf:              string
+  atendido:        string
+  dataAtendimento: string
+  reativado:       string
+  dataReativacao:  string
+  observacoes:     string
 }
 
-function normCidade(s: string): string {
-  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
-}
-
-function pertenceGF(cidade: string | null): boolean {
-  if (!cidade) return false
-  const n = normCidade(cidade)
-  return CIDADES_GF.some(c => n === c || n.includes(c))
-}
-
-function displayCidade(cidade: string): string {
-  const n = normCidade(cidade)
-  for (const [key, label] of Object.entries(CIDADE_DISPLAY)) {
-    if (n === key || n.includes(key)) return label
+function parseCSV(csv: string): string[][] {
+  const rows: string[][] = []
+  let row: string[] = [], cur = '', inQ = false
+  for (let i = 0; i < csv.length; i++) {
+    const ch = csv[i]
+    if (ch === '"') { if (inQ && csv[i+1] === '"') { cur += '"'; i++ } else inQ = !inQ }
+    else if (ch === ',' && !inQ) { row.push(cur); cur = '' }
+    else if (ch === '\r' && !inQ) {}
+    else if (ch === '\n' && !inQ) { row.push(cur); cur = ''; if (row.length) rows.push(row); row = [] }
+    else cur += ch
   }
-  return cidade
+  if (cur || row.length) { row.push(cur); rows.push(row) }
+  return rows
 }
 
-interface TelField { col: string; valor: string }
-
-interface Partner {
-  codigo:        string
-  nome:          string
-  telefones:     TelField[]
-  uf:            string | null
-  cidade:        string | null
-  totalProducao: number
-  mediaProducao: number
-  diasInativo:   number
-  tempoLabel:    string
-  convenio:      string
-}
+function sim(v: string) { return v?.toLowerCase().trim() === 'sim' }
 
 const CIDADES_FILTRO = ['Todas', 'Florianópolis', 'São José', 'Palhoça', 'Biguaçu']
 
-function melhorTelefone(telefones: TelField[]): string {
-  const priority = ['celular', 'celular_comercial', 'telefone', 'telefone_com', 'telefone_comercial_1', 'telefone_comercial_2']
-  const map = Object.fromEntries(telefones.map(t => [t.col, t.valor]))
-  for (const col of priority) {
-    const v = map[col] ?? ''
-    if (v && v !== '.' && v.replace(/\D/g, '').length >= 8) return v
-  }
-  return ''
-}
-
-const fmt = (v: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
-
 export default function ArianePage() {
-  const [loading,    setLoading]    = useState(false)
-  const [loaded,     setLoaded]     = useState(false)
-  const [partners,   setPartners]   = useState<Partner[]>([])
-  const [busca,      setBusca]      = useState('')
-  const [cidadeF,    setCidadeF]    = useState('Todas')
-  const [atendido,   setAtendido]   = useState<Record<string, boolean>>({})
-  const [reativado,  setReativado]  = useState<Record<string, boolean>>({})
-  const [obs,        setObs]        = useState<Record<string, string>>({})
-  const [editObs,    setEditObs]    = useState<string | null>(null)
+  const [loading,  setLoading]  = useState(false)
+  const [leads,    setLeads]    = useState<Lead[]>([])
+  const [loaded,   setLoaded]   = useState(false)
+  const [busca,    setBusca]    = useState('')
+  const [cidadeF,  setCidadeF]  = useState('Todas')
+  const [apenasNaoAtendidos, setApenasNaoAtendidos] = useState(false)
 
   const carregar = useCallback(async () => {
     setLoading(true)
     try {
-      // Busca toda a base sem filtros de inatividade/produção
-      const res = await fetch('/api/disparos')
-      const data = await res.json()
-      const todos: Partner[] = data.partners ?? data.parceiros ?? []
-      // Filtra SC + cidades da Grande Florianópolis
-      const gf = todos.filter(p => p.uf === 'SC' && pertenceGF(p.cidade ?? ''))
-      setPartners(gf)
+      const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`
+      const res = await fetch(url, { cache: 'no-store' })
+      const buf = await res.arrayBuffer()
+      const text = new TextDecoder('utf-8').decode(buf)
+      const rows = parseCSV(text)
+      if (rows.length < 2) return
+
+      const parsed: Lead[] = rows.slice(1).map(r => ({
+        codigo:           r[0]?.trim()  ?? '',
+        nome:             r[1]?.trim()  ?? '',
+        telefonePrincipal: r[2]?.trim() ?? '',
+        telefoneFixo:     r[3]?.trim()  ?? '',
+        celular:          r[4]?.trim()  ?? '',
+        media:            r[5]?.trim()  ?? '',
+        inatividade:      r[6]?.trim()  ?? '',
+        cidade:           r[7]?.trim()  ?? '',
+        uf:               r[8]?.trim()  ?? '',
+        atendido:         r[9]?.trim()  ?? '',
+        dataAtendimento:  r[10]?.trim() ?? '',
+        reativado:        r[11]?.trim() ?? '',
+        dataReativacao:   r[12]?.trim() ?? '',
+        observacoes:      r[13]?.trim() ?? '',
+      })).filter(l => l.codigo)
+
+      setLeads(parsed)
       setLoaded(true)
     } finally {
       setLoading(false)
     }
   }, [])
 
-  const leads = useMemo(() => {
+  const filtrados = useMemo(() => {
     const q = busca.toLowerCase()
-    return partners.filter(p => {
-      const matchBusca = !q
-        || p.nome.toLowerCase().includes(q)
-        || p.codigo.includes(q)
-        || melhorTelefone(p.telefones).includes(q)
-      const cidade = displayCidade(p.cidade ?? '')
-      const matchCidade = cidadeF === 'Todas' || cidade === cidadeF
-      return matchBusca && matchCidade
+    return leads.filter(l => {
+      const matchBusca   = !q || l.nome.toLowerCase().includes(q) || l.codigo.includes(q) || l.telefonePrincipal.includes(q)
+      const matchCidade  = cidadeF === 'Todas' || l.cidade === cidadeF
+      const matchFiltro  = !apenasNaoAtendidos || !sim(l.atendido)
+      return matchBusca && matchCidade && matchFiltro
     })
-  }, [partners, busca, cidadeF])
+  }, [leads, busca, cidadeF, apenasNaoAtendidos])
 
-  const totalAtendidos  = Object.values(atendido).filter(Boolean).length
-  const totalReativados = Object.values(reativado).filter(Boolean).length
+  const totalAtendidos  = leads.filter(l => sim(l.atendido)).length
+  const totalReativados = leads.filter(l => sim(l.reativado)).length
 
   return (
     <>
@@ -114,7 +107,7 @@ export default function ArianePage() {
         {!loaded ? (
           <div className="flex flex-col items-center justify-center h-64 gap-4">
             <p className="text-sm text-[var(--nova-text-muted)]">
-              Clique para carregar os parceiros elegíveis da Grande Florianópolis
+              Clique para carregar os dados da planilha da Ariane
             </p>
             <button
               onClick={carregar}
@@ -128,11 +121,12 @@ export default function ArianePage() {
         ) : (
           <>
             {/* KPIs */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-3">
               {[
-                { label: 'Total de leads',  value: partners.length,  icon: Users,        color: 'text-[var(--nova-text)]', bg: 'bg-[var(--nova-bg-elev-2)]' },
-                { label: 'Atendidos',       value: totalAtendidos,   icon: CheckCircle2, color: 'text-green-400',          bg: 'bg-green-500/10' },
-                { label: 'Reativados',      value: totalReativados,  icon: RefreshCw,    color: 'text-indigo-400',         bg: 'bg-indigo-500/10' },
+                { label: 'Total de leads',     value: leads.length,      icon: Users,        color: 'text-[var(--nova-text)]', bg: 'bg-[var(--nova-bg-elev-2)]' },
+                { label: 'Atendidos',          value: totalAtendidos,    icon: CheckCircle2, color: 'text-green-400',          bg: 'bg-green-500/10' },
+                { label: 'Não atendidos',      value: leads.length - totalAtendidos, icon: XCircle, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+                { label: 'Reativados',         value: totalReativados,   icon: RefreshCw,    color: 'text-indigo-400',         bg: 'bg-indigo-500/10' },
               ].map(k => {
                 const Icon = k.icon
                 return (
@@ -176,6 +170,25 @@ export default function ArianePage() {
                   </button>
                 ))}
               </div>
+              <button
+                onClick={() => setApenasNaoAtendidos(v => !v)}
+                className={cn(
+                  'px-3 py-1.5 text-xs rounded-md border transition-nova',
+                  apenasNaoAtendidos
+                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                    : 'border-[var(--nova-border)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text)] hover:bg-white/[0.04]',
+                )}
+              >
+                Não atendidos
+              </button>
+              <button
+                onClick={carregar}
+                disabled={loading}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-[var(--nova-border)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text)] hover:bg-white/[0.04] transition-nova disabled:opacity-50"
+              >
+                <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+                Atualizar
+              </button>
             </div>
 
             {/* Tabela */}
@@ -184,7 +197,7 @@ export default function ArianePage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-[var(--nova-bg-elev-2)]">
-                      {['Código', 'Nome', 'Telefone', 'Média/mês', 'Inatividade', 'Convênio', 'Cidade', 'Atendido?', 'Reativado?', 'Observações'].map(h => (
+                      {['Código','Nome','Telefone','Média/mês','Inatividade','Cidade','Atendido?','Data Atend.','Reativado?','Data Reat.','Observações'].map(h => (
                         <th key={h} className="px-3 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)] whitespace-nowrap">
                           {h}
                         </th>
@@ -192,89 +205,63 @@ export default function ArianePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--nova-border)]/50">
-                    {leads.map(p => {
-                      const tel = melhorTelefone(p.telefones)
-                      const cidade = displayCidade(p.cidade ?? '')
-                      return (
-                        <tr key={p.codigo} className="hover:bg-white/[0.02]">
-                          <td className="px-3 py-2.5 font-mono text-xs text-[var(--nova-text-dim)]">{p.codigo}</td>
-                          <td className="px-3 py-2.5 font-medium text-[var(--nova-text)] whitespace-nowrap">{p.nome}</td>
-                          <td className="px-3 py-2.5 text-[var(--nova-text-muted)] whitespace-nowrap">
-                            {tel ? (
-                              <a href={`tel:${tel}`} className="hover:text-[var(--nova-blue)] flex items-center gap-1">
-                                <Phone size={11} /> {tel}
-                              </a>
-                            ) : '—'}
-                          </td>
-                          <td className="px-3 py-2.5 text-[var(--nova-text)] whitespace-nowrap">{fmt(p.mediaProducao)}/mês</td>
-                          <td className="px-3 py-2.5 whitespace-nowrap">
-                            <Badge variant="inativo" dot>{p.tempoLabel}</Badge>
-                          </td>
-                          <td className="px-3 py-2.5 text-[var(--nova-text-muted)] whitespace-nowrap">{p.convenio}</td>
-                          <td className="px-3 py-2.5 text-[var(--nova-text-muted)] whitespace-nowrap">{cidade}</td>
+                    {filtrados.map(l => (
+                      <tr key={l.codigo} className={cn('hover:bg-white/[0.02]', sim(l.reativado) && 'bg-indigo-500/[0.04]')}>
+                        <td className="px-3 py-2.5 font-mono text-xs text-[var(--nova-text-dim)]">{l.codigo}</td>
+                        <td className="px-3 py-2.5 font-medium text-[var(--nova-text)] whitespace-nowrap">{l.nome}</td>
+                        <td className="px-3 py-2.5 text-[var(--nova-text-muted)] whitespace-nowrap">
+                          {l.telefonePrincipal ? (
+                            <a href={`tel:${l.telefonePrincipal}`} className="hover:text-[var(--nova-blue)] flex items-center gap-1">
+                              <Phone size={11} /> {l.telefonePrincipal}
+                            </a>
+                          ) : '—'}
+                        </td>
+                        <td className="px-3 py-2.5 text-[var(--nova-text)] whitespace-nowrap">{l.media}</td>
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          <Badge variant="inativo" dot>{l.inatividade}</Badge>
+                        </td>
+                        <td className="px-3 py-2.5 text-[var(--nova-text-muted)] whitespace-nowrap">{l.cidade}</td>
 
-                          <td className="px-3 py-2.5">
-                            <button
-                              onClick={() => setAtendido(prev => ({ ...prev, [p.codigo]: !prev[p.codigo] }))}
-                              className={cn(
-                                'flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full transition-nova',
-                                atendido[p.codigo]
-                                  ? 'bg-green-500/15 text-green-400'
-                                  : 'bg-[var(--nova-bg-elev-2)] text-[var(--nova-text-dim)] hover:text-[var(--nova-text)]',
-                              )}
-                            >
-                              {atendido[p.codigo] ? <CheckCircle2 size={11} /> : <XCircle size={11} />}
-                              {atendido[p.codigo] ? 'Sim' : 'Não'}
-                            </button>
-                          </td>
+                        <td className="px-3 py-2.5">
+                          <span className={cn(
+                            'inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full',
+                            sim(l.atendido)
+                              ? 'bg-green-500/15 text-green-400'
+                              : 'bg-[var(--nova-bg-elev-2)] text-[var(--nova-text-dim)]',
+                          )}>
+                            {sim(l.atendido) ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
+                            {sim(l.atendido) ? 'Sim' : 'Não'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-xs text-[var(--nova-text-dim)] whitespace-nowrap">{l.dataAtendimento || '—'}</td>
 
-                          <td className="px-3 py-2.5">
-                            <button
-                              onClick={() => setReativado(prev => ({ ...prev, [p.codigo]: !prev[p.codigo] }))}
-                              className={cn(
-                                'flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full transition-nova',
-                                reativado[p.codigo]
-                                  ? 'bg-indigo-500/15 text-indigo-400'
-                                  : 'bg-[var(--nova-bg-elev-2)] text-[var(--nova-text-dim)] hover:text-[var(--nova-text)]',
-                              )}
-                            >
-                              {reativado[p.codigo] ? <CheckCircle2 size={11} /> : <XCircle size={11} />}
-                              {reativado[p.codigo] ? 'Sim' : 'Não'}
-                            </button>
-                          </td>
+                        <td className="px-3 py-2.5">
+                          <span className={cn(
+                            'inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full',
+                            sim(l.reativado)
+                              ? 'bg-indigo-500/15 text-indigo-400'
+                              : 'bg-[var(--nova-bg-elev-2)] text-[var(--nova-text-dim)]',
+                          )}>
+                            {sim(l.reativado) ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
+                            {sim(l.reativado) ? 'Sim' : 'Não'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-xs text-[var(--nova-text-dim)] whitespace-nowrap">{l.dataReativacao || '—'}</td>
 
-                          <td className="px-3 py-2.5 min-w-[160px]">
-                            {editObs === p.codigo ? (
-                              <input
-                                autoFocus
-                                value={obs[p.codigo] ?? ''}
-                                onChange={e => setObs(prev => ({ ...prev, [p.codigo]: e.target.value }))}
-                                onBlur={() => setEditObs(null)}
-                                onKeyDown={e => e.key === 'Enter' && setEditObs(null)}
-                                className="w-full text-xs px-2 py-1 rounded border border-[var(--nova-border)] bg-[var(--nova-bg-elev-2)] text-[var(--nova-text)] focus:outline-none focus:ring-1 focus:ring-[var(--nova-blue)]"
-                              />
-                            ) : (
-                              <button
-                                onClick={() => setEditObs(p.codigo)}
-                                className="text-xs text-left w-full text-[var(--nova-text-dim)] hover:text-[var(--nova-text)] truncate max-w-[160px]"
-                              >
-                                {obs[p.codigo] || <span className="italic opacity-50">Adicionar…</span>}
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
+                        <td className="px-3 py-2.5 text-xs text-[var(--nova-text-muted)] max-w-[200px] truncate" title={l.observacoes}>
+                          {l.observacoes || <span className="italic opacity-40">—</span>}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
               <div className="px-4 py-2.5 border-t border-[var(--nova-border)] text-xs text-[var(--nova-text-dim)]">
-                {leads.length} de {partners.length} leads exibidos
+                {filtrados.length} de {leads.length} leads · dados da planilha compartilhada
               </div>
             </div>
           </>
         )}
-
       </main>
     </>
   )
