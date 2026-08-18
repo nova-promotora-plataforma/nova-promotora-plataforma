@@ -3,26 +3,29 @@
 import { useState, useCallback, useMemo } from 'react'
 import { TopBar } from '@/components/layout/TopBar'
 import { Badge } from '@/components/ui/Badge'
-import { Loader2, Search, Users, Phone, CheckCircle2, XCircle, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import {
+  Loader2, Search, Users, Phone, CheckCircle2, XCircle, RefreshCw,
+  ArrowUpDown, ArrowUp, ArrowDown, MapPin, TrendingUp, UserCheck,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const SHEET_ID = '104gzMOGUgku7Wnx7rLKfHvz2HckdZvX-vEWdEJgzSNA'
 
 interface Lead {
-  codigo:           string
-  nome:             string
+  codigo:            string
+  nome:              string
   telefonePrincipal: string
-  telefoneFixo:     string
-  celular:          string
-  media:            string
-  inatividade:      string
-  cidade:           string
-  uf:               string
-  atendido:         string
-  dataAtendimento:  string
-  reativado:        string
-  dataReativacao:   string
-  observacoes:      string
+  telefoneFixo:      string
+  celular:           string
+  media:             string
+  inatividade:       string
+  cidade:            string
+  uf:                string
+  atendido:          string
+  dataAtendimento:   string
+  reativado:         string
+  dataReativacao:    string
+  observacoes:       string
 }
 
 function parseCSV(csv: string): string[][] {
@@ -42,7 +45,6 @@ function parseCSV(csv: string): string[][] {
 
 function sim(v: string) { return v?.toLowerCase().trim() === 'sim' }
 
-// Ordem de inatividade para ordenação
 const INATIVIDADE_ORDER: Record<string, number> = {
   '3 meses': 1, '6 meses': 2, '1 ano': 3, '2 anos': 4, '3 anos ou mais': 5,
 }
@@ -70,15 +72,23 @@ function SortBtn({ col, sortKey, sortDir, onSort }: {
   )
 }
 
+function ProgressBar({ value, color = 'bg-[var(--nova-blue)]' }: { value: number; color?: string }) {
+  return (
+    <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mt-1">
+      <div className={cn('h-full rounded-full transition-all duration-500', color)} style={{ width: `${Math.min(value, 100)}%` }} />
+    </div>
+  )
+}
+
 export default function ArianePage() {
-  const [loading,  setLoading]  = useState(false)
-  const [leads,    setLeads]    = useState<Lead[]>([])
-  const [loaded,   setLoaded]   = useState(false)
-  const [busca,    setBusca]    = useState('')
-  const [cidadeF,  setCidadeF]  = useState('Todas')
+  const [loading, setLoading]   = useState(false)
+  const [leads, setLeads]       = useState<Lead[]>([])
+  const [loaded, setLoaded]     = useState(false)
+  const [busca, setBusca]       = useState('')
+  const [cidadeF, setCidadeF]   = useState('Todas')
   const [apenasNaoAtendidos, setApenasNaoAtendidos] = useState(false)
-  const [sortKey,  setSortKey]  = useState<SortKey | null>(null)
-  const [sortDir,  setSortDir]  = useState<SortDir>('asc')
+  const [sortKey, setSortKey]   = useState<SortKey | null>(null)
+  const [sortDir, setSortDir]   = useState<SortDir>('asc')
 
   const carregar = useCallback(async () => {
     setLoading(true)
@@ -125,7 +135,6 @@ export default function ArianePage() {
       const matchFiltro = !apenasNaoAtendidos || !sim(l.atendido)
       return matchBusca && matchCidade && matchFiltro
     })
-
     if (sortKey) {
       list = [...list].sort((a, b) => {
         let va: number | string = 0, vb: number | string = 0
@@ -139,11 +148,9 @@ export default function ArianePage() {
         return sortDir === 'asc' ? cmp : -cmp
       })
     }
-
     return list
   }, [leads, busca, cidadeF, apenasNaoAtendidos, sortKey, sortDir])
 
-  // KPIs calculados sobre o conjunto filtrado (exceto filtro "não atendidos")
   const base = useMemo(() => {
     const q = busca.toLowerCase()
     return leads.filter(l => {
@@ -157,53 +164,183 @@ export default function ArianePage() {
   const totalReativados = base.filter(l => sim(l.reativado)).length
   const preenchidos     = leads.filter(l => l.atendido !== '').length
 
-  const pct = (n: number, d: number) => d > 0 ? `${((n / d) * 100).toFixed(1)}%` : '—'
+  const pct    = (n: number, d: number) => d > 0 ? ((n / d) * 100) : 0
+  const pctStr = (n: number, d: number) => d > 0 ? `${pct(n, d).toFixed(1)}%` : '—'
+
+  const taxaAtendimento  = pct(totalAtendidos, base.length)
+  const taxaReativacao   = pct(totalReativados, totalAtendidos)
+  const taxaNaoAtendidos = pct(base.length - totalAtendidos, base.length)
 
   return (
     <>
       <TopBar title="Grande Florianópolis — Leads Ariane" />
       <main className="flex-1 overflow-auto p-5 space-y-4">
 
-        {!loaded ? (
-          <div className="flex flex-col items-center justify-center h-64 gap-4">
+        {/* Hero: perfil + KPIs */}
+        <div className="grid grid-cols-[260px_1fr] gap-4">
+
+          {/* Card de perfil */}
+          <div className="rounded-xl border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] overflow-hidden relative flex flex-col">
+            <div className="h-20 bg-gradient-to-br from-blue-600/30 to-indigo-700/20" />
+            <div className="px-5 pb-5 flex flex-col items-center text-center -mt-10 flex-1">
+              <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-[var(--nova-bg-elev)] bg-[var(--nova-bg-elev-2)] flex-shrink-0">
+                {/* Salve a foto em public/ariane.jpg */}
+                <img
+                  src="/ariane.jpg"
+                  alt="Ariane"
+                  className="w-full h-full object-cover object-top"
+                  onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                />
+              </div>
+              <h2 className="mt-3 font-semibold text-[var(--nova-text)] text-base leading-tight">Ariane</h2>
+              <p className="text-xs text-[var(--nova-text-dim)] mt-0.5">Comercial</p>
+              <div className="flex items-center gap-1 mt-1">
+                <MapPin size={11} className="text-[var(--nova-blue)]" />
+                <span className="text-[0.65rem] text-[var(--nova-text-dim)]">Grande Florianópolis</span>
+              </div>
+
+              <div className="mt-4 w-full space-y-3">
+                <div className="text-left">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[0.65rem] text-[var(--nova-text-dim)] uppercase tracking-wider">Atendimento</span>
+                    <span className="text-[0.65rem] font-semibold text-green-400">{pctStr(totalAtendidos, base.length)}</span>
+                  </div>
+                  <ProgressBar value={taxaAtendimento} color="bg-green-500" />
+                </div>
+                <div className="text-left">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[0.65rem] text-[var(--nova-text-dim)] uppercase tracking-wider">Reativação</span>
+                    <span className="text-[0.65rem] font-semibold text-indigo-400">{pctStr(totalReativados, totalAtendidos)}</span>
+                  </div>
+                  <ProgressBar value={taxaReativacao} color="bg-indigo-500" />
+                </div>
+                <div className="text-left">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[0.65rem] text-[var(--nova-text-dim)] uppercase tracking-wider">Pendentes</span>
+                    <span className="text-[0.65rem] font-semibold text-amber-400">{pctStr(base.length - totalAtendidos, base.length)}</span>
+                  </div>
+                  <ProgressBar value={taxaNaoAtendidos} color="bg-amber-500" />
+                </div>
+              </div>
+
+              {loaded && (
+                <button onClick={carregar} disabled={loading}
+                  className="mt-4 w-full flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-md border border-[var(--nova-border)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text)] hover:bg-white/[0.04] transition-nova disabled:opacity-50"
+                >
+                  <RefreshCw size={11} className={loading ? 'animate-spin' : ''} /> Atualizar dados
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* KPIs + funil */}
+          <div className="flex flex-col gap-4">
+            {/* KPI cards */}
+            <div className="grid grid-cols-4 gap-3">
+              {[
+                {
+                  label: 'Total na seleção',
+                  value: loaded ? base.length : '—',
+                  sub: cidadeF !== 'Todas' ? `${pctStr(base.length, leads.length)} da base` : `${leads.length} na base`,
+                  color: 'text-[var(--nova-text)]',
+                  accent: 'from-blue-500/20 to-blue-600/5',
+                  icon: Users,
+                  iconColor: 'text-[var(--nova-blue)]',
+                  iconBg: 'bg-blue-500/10',
+                },
+                {
+                  label: 'Atendidos',
+                  value: loaded ? totalAtendidos : '—',
+                  sub: loaded ? `${pctStr(totalAtendidos, base.length)} do total` : 'aguardando dados',
+                  color: 'text-green-400',
+                  accent: 'from-green-500/20 to-green-600/5',
+                  icon: UserCheck,
+                  iconColor: 'text-green-400',
+                  iconBg: 'bg-green-500/10',
+                },
+                {
+                  label: 'Não atendidos',
+                  value: loaded ? base.length - totalAtendidos : '—',
+                  sub: loaded ? `${pctStr(base.length - totalAtendidos, base.length)} do total` : 'aguardando dados',
+                  color: 'text-amber-400',
+                  accent: 'from-amber-500/20 to-amber-600/5',
+                  icon: XCircle,
+                  iconColor: 'text-amber-400',
+                  iconBg: 'bg-amber-500/10',
+                },
+                {
+                  label: 'Reativados',
+                  value: loaded ? totalReativados : '—',
+                  sub: loaded ? `${pctStr(totalReativados, totalAtendidos)} dos atendidos` : 'aguardando dados',
+                  color: 'text-indigo-400',
+                  accent: 'from-indigo-500/20 to-indigo-600/5',
+                  icon: TrendingUp,
+                  iconColor: 'text-indigo-400',
+                  iconBg: 'bg-indigo-500/10',
+                },
+              ].map(k => {
+                const Icon = k.icon
+                return (
+                  <div key={k.label} className={cn('rounded-xl border border-[var(--nova-border)] bg-gradient-to-br p-4 flex flex-col gap-2', k.accent, 'bg-[var(--nova-bg-elev)]')}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-[var(--nova-text-dim)]">{k.label}</span>
+                      <div className={cn('w-7 h-7 rounded-md flex items-center justify-center', k.iconBg)}>
+                        <Icon size={14} className={k.iconColor} />
+                      </div>
+                    </div>
+                    <p className={cn('text-3xl font-bold leading-none', k.color)}>{k.value}</p>
+                    <p className="text-[0.65rem] text-[var(--nova-text-dim)]">{k.sub}</p>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Funil visual por cidade */}
+            {loaded && (
+              <div className="rounded-xl border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] p-4 flex-1">
+                <p className="text-xs font-medium text-[var(--nova-text-dim)] uppercase tracking-wider mb-3">Distribuição por cidade</p>
+                <div className="space-y-2">
+                  {CIDADES_FILTRO.filter(c => c !== 'Todas').map(cidade => {
+                    const count = leads.filter(l => l.cidade === cidade).length
+                    const atend = leads.filter(l => l.cidade === cidade && sim(l.atendido)).length
+                    const pctCidade = pct(count, leads.length)
+                    return (
+                      <div key={cidade}>
+                        <div className="flex justify-between text-xs mb-0.5">
+                          <span className="text-[var(--nova-text-muted)]">{cidade}</span>
+                          <span className="text-[var(--nova-text-dim)]">{atend}/{count} · <span className="text-[var(--nova-blue)]">{pctCidade.toFixed(0)}%</span></span>
+                        </div>
+                        <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-gradient-to-r from-[var(--nova-blue)] to-blue-400/60" style={{ width: `${pctCidade}%` }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Estado inicial: não carregado */}
+        {!loaded && (
+          <div className="flex flex-col items-center justify-center h-48 gap-4">
             <p className="text-sm text-[var(--nova-text-muted)]">
               Clique para carregar os dados da planilha da Ariane
             </p>
             <button
               onClick={carregar}
               disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 rounded-md bg-[var(--btn-blue-bg)] border border-[var(--btn-blue-border)] text-[var(--btn-blue-text)] text-sm font-medium hover:opacity-90 transition-nova disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--btn-blue-bg)] border border-[var(--btn-blue-border)] text-[var(--btn-blue-text)] text-sm font-medium hover:opacity-90 transition-nova disabled:opacity-50"
             >
               {loading ? <Loader2 size={14} className="animate-spin" /> : <Users size={14} />}
-              {loading ? 'Carregando…' : 'Carregar base'}
+              {loading ? 'Carregando…' : 'Carregar base de leads'}
             </button>
           </div>
-        ) : (
-          <>
-            {/* KPIs */}
-            <div className="grid grid-cols-4 gap-3">
-              {[
-                { label: 'Total na seleção', value: base.length,                    taxa: cidadeF !== 'Todas' ? pct(base.length, leads.length) + ' da base' : null, color: 'text-[var(--nova-text)]', bg: 'bg-[var(--nova-bg-elev-2)]', icon: Users        },
-                { label: 'Atendidos',        value: totalAtendidos,                 taxa: pct(totalAtendidos, base.length) + ' do total',                          color: 'text-green-400',          bg: 'bg-green-500/10',             icon: CheckCircle2 },
-                { label: 'Não atendidos',    value: base.length - totalAtendidos,   taxa: pct(base.length - totalAtendidos, base.length) + ' do total',            color: 'text-amber-400',          bg: 'bg-amber-500/10',             icon: XCircle      },
-                { label: 'Reativados',       value: totalReativados,                taxa: pct(totalReativados, totalAtendidos) + ' dos atendidos',                 color: 'text-indigo-400',         bg: 'bg-indigo-500/10',            icon: RefreshCw    },
-              ].map(k => {
-                const Icon = k.icon
-                return (
-                  <div key={k.label} className="rounded-lg border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] p-4 flex items-center gap-3">
-                    <div className={cn('w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0', k.bg)}>
-                      <Icon size={18} className={k.color} />
-                    </div>
-                    <div>
-                      <p className="text-xs text-[var(--nova-text-dim)]">{k.label}</p>
-                      <p className={cn('text-2xl font-bold', k.color)}>{k.value}</p>
-                      {k.taxa && <p className="text-[0.65rem] text-[var(--nova-text-dim)] mt-0.5">{k.taxa}</p>}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+        )}
 
+        {loaded && (
+          <>
             {preenchidos === 0 && (
               <p className="text-xs text-[var(--nova-text-dim)] italic">
                 Planilha ainda não preenchida — os dados aparecerão aqui conforme a Ariane for atualizando.
@@ -212,19 +349,19 @@ export default function ArianePage() {
 
             {/* Filtros */}
             <div className="flex flex-wrap items-center gap-2">
-              <div className="relative flex-1 min-w-[200px]">
+              <div className="relative flex-1 min-w-[220px]">
                 <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--nova-text-dim)]" />
                 <input
                   value={busca}
                   onChange={e => setBusca(e.target.value)}
                   placeholder="Buscar por nome, código ou telefone…"
-                  className="w-full pl-8 pr-3 py-2 text-sm rounded-md border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] text-[var(--nova-text)] placeholder:text-[var(--nova-text-dim)] focus:outline-none focus:ring-1 focus:ring-[var(--nova-blue)]"
+                  className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] text-[var(--nova-text)] placeholder:text-[var(--nova-text-dim)] focus:outline-none focus:ring-1 focus:ring-[var(--nova-blue)]"
                 />
               </div>
               <div className="flex gap-1 flex-wrap">
                 {CIDADES_FILTRO.map(c => (
                   <button key={c} onClick={() => setCidadeF(c)}
-                    className={cn('px-3 py-1.5 text-xs rounded-md border transition-nova',
+                    className={cn('px-3 py-1.5 text-xs rounded-lg border transition-nova',
                       cidadeF === c
                         ? 'bg-[var(--btn-blue-bg)] border-[var(--btn-blue-border)] text-[var(--btn-blue-text)]'
                         : 'border-[var(--nova-border)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text)] hover:bg-white/[0.04]',
@@ -233,21 +370,16 @@ export default function ArianePage() {
                 ))}
               </div>
               <button onClick={() => setApenasNaoAtendidos(v => !v)}
-                className={cn('px-3 py-1.5 text-xs rounded-md border transition-nova',
+                className={cn('px-3 py-1.5 text-xs rounded-lg border transition-nova',
                   apenasNaoAtendidos
                     ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
                     : 'border-[var(--nova-border)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text)] hover:bg-white/[0.04]',
                 )}
               >Não atendidos</button>
-              <button onClick={carregar} disabled={loading}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-[var(--nova-border)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text)] hover:bg-white/[0.04] transition-nova disabled:opacity-50"
-              >
-                <RefreshCw size={12} className={loading ? 'animate-spin' : ''} /> Atualizar
-              </button>
             </div>
 
             {/* Tabela */}
-            <div className="rounded-lg border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] overflow-hidden">
+            <div className="rounded-xl border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -291,8 +423,6 @@ export default function ArianePage() {
                           <Badge variant="inativo" dot>{l.inatividade}</Badge>
                         </td>
                         <td className="px-3 py-2.5 text-[var(--nova-text-muted)] whitespace-nowrap">{l.cidade}</td>
-
-                        {/* Atendido */}
                         <td className="px-3 py-2.5">
                           {l.atendido === '' ? (
                             <span className="text-xs text-[var(--nova-text-dim)] italic">—</span>
@@ -306,8 +436,6 @@ export default function ArianePage() {
                           )}
                         </td>
                         <td className="px-3 py-2.5 text-xs text-[var(--nova-text-dim)] whitespace-nowrap">{l.dataAtendimento || '—'}</td>
-
-                        {/* Reativado */}
                         <td className="px-3 py-2.5">
                           {l.reativado === '' ? (
                             <span className="text-xs text-[var(--nova-text-dim)] italic">—</span>
@@ -321,7 +449,6 @@ export default function ArianePage() {
                           )}
                         </td>
                         <td className="px-3 py-2.5 text-xs text-[var(--nova-text-dim)] whitespace-nowrap">{l.dataReativacao || '—'}</td>
-
                         <td className="px-3 py-2.5 text-xs text-[var(--nova-text-muted)] max-w-[200px] truncate" title={l.observacoes}>
                           {l.observacoes || <span className="italic opacity-40">—</span>}
                         </td>
