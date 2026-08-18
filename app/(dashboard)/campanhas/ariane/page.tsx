@@ -143,9 +143,21 @@ export default function ArianePage() {
     return list
   }, [leads, busca, cidadeF, apenasNaoAtendidos, sortKey, sortDir])
 
-  const totalAtendidos  = leads.filter(l => sim(l.atendido)).length
-  const totalReativados = leads.filter(l => sim(l.reativado)).length
+  // KPIs calculados sobre o conjunto filtrado (exceto filtro "não atendidos")
+  const base = useMemo(() => {
+    const q = busca.toLowerCase()
+    return leads.filter(l => {
+      const matchBusca  = !q || l.nome.toLowerCase().includes(q) || l.codigo.includes(q) || l.telefonePrincipal.includes(q)
+      const matchCidade = cidadeF === 'Todas' || l.cidade === cidadeF
+      return matchBusca && matchCidade
+    })
+  }, [leads, busca, cidadeF])
+
+  const totalAtendidos  = base.filter(l => sim(l.atendido)).length
+  const totalReativados = base.filter(l => sim(l.reativado)).length
   const preenchidos     = leads.filter(l => l.atendido !== '').length
+
+  const pct = (n: number, d: number) => d > 0 ? `${((n / d) * 100).toFixed(1)}%` : '—'
 
   return (
     <>
@@ -171,10 +183,10 @@ export default function ArianePage() {
             {/* KPIs */}
             <div className="grid grid-cols-4 gap-3">
               {[
-                { label: 'Total de leads',  value: leads.length,                     color: 'text-[var(--nova-text)]', bg: 'bg-[var(--nova-bg-elev-2)]', icon: Users        },
-                { label: 'Atendidos',       value: totalAtendidos,                   color: 'text-green-400',          bg: 'bg-green-500/10',             icon: CheckCircle2 },
-                { label: 'Não atendidos',   value: leads.length - totalAtendidos,    color: 'text-amber-400',          bg: 'bg-amber-500/10',             icon: XCircle      },
-                { label: 'Reativados',      value: totalReativados,                  color: 'text-indigo-400',         bg: 'bg-indigo-500/10',            icon: RefreshCw    },
+                { label: 'Total na seleção', value: base.length,                    taxa: cidadeF !== 'Todas' ? pct(base.length, leads.length) + ' da base' : null, color: 'text-[var(--nova-text)]', bg: 'bg-[var(--nova-bg-elev-2)]', icon: Users        },
+                { label: 'Atendidos',        value: totalAtendidos,                 taxa: pct(totalAtendidos, base.length) + ' do total',                          color: 'text-green-400',          bg: 'bg-green-500/10',             icon: CheckCircle2 },
+                { label: 'Não atendidos',    value: base.length - totalAtendidos,   taxa: pct(base.length - totalAtendidos, base.length) + ' do total',            color: 'text-amber-400',          bg: 'bg-amber-500/10',             icon: XCircle      },
+                { label: 'Reativados',       value: totalReativados,                taxa: pct(totalReativados, totalAtendidos) + ' dos atendidos',                 color: 'text-indigo-400',         bg: 'bg-indigo-500/10',            icon: RefreshCw    },
               ].map(k => {
                 const Icon = k.icon
                 return (
@@ -185,6 +197,7 @@ export default function ArianePage() {
                     <div>
                       <p className="text-xs text-[var(--nova-text-dim)]">{k.label}</p>
                       <p className={cn('text-2xl font-bold', k.color)}>{k.value}</p>
+                      {k.taxa && <p className="text-[0.65rem] text-[var(--nova-text-dim)] mt-0.5">{k.taxa}</p>}
                     </div>
                   </div>
                 )
