@@ -2,10 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 
 // Usuários válidos — adicione aqui ou migre para Supabase futuramente
 const USERS: Record<string, { password: string; name: string; role: string }> = {
+  'marketing@novapromotora.com': {
+    password: 'Nova@2026',
+    name:     'Gabriella',
+    role:     'admin',
+  },
   'design@novafinanceira.com': {
     password: process.env.AUTH_PASSWORD_DESIGN ?? 'Nova@2026',
-    name:     'Design',
-    role:     'designer',
+    name:     'Yasmin',
+    role:     'admin',
   },
   'marketing3@novapromotora.com': {
     password: process.env.AUTH_PASSWORD_MARKETING ?? 'Nova@2026',
