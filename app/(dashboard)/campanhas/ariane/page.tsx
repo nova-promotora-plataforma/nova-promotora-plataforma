@@ -94,13 +94,18 @@ export default function ArianePage() {
   const carregar = useCallback(async () => {
     setLoading(true)
     try {
-      const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`
-      const res = await fetch(url, { cache: 'no-store' })
-      const lastMod = res.headers.get('last-modified') || res.headers.get('date')
-      if (lastMod) {
-        const d = new Date(lastMod)
-        setUltimaAtt(d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }))
+      const [metaRes, csvRes] = await Promise.all([
+        fetch(`/api/sheets-meta?fileId=${SHEET_ID}`, { cache: 'no-store' }),
+        fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`, { cache: 'no-store' }),
+      ])
+      if (metaRes.ok) {
+        const { modifiedTime } = await metaRes.json()
+        if (modifiedTime) {
+          const d = new Date(modifiedTime)
+          setUltimaAtt(d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }))
+        }
       }
+      const res = csvRes
       const buf = await res.arrayBuffer()
       const text = new TextDecoder('utf-8').decode(buf)
       const rows = parseCSV(text)
