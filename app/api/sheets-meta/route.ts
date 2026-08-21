@@ -12,7 +12,11 @@ export async function GET(req: NextRequest) {
     { cache: 'no-store' }
   )
 
-  if (!res.ok) return NextResponse.json({ error: 'Drive API error' }, { status: res.status })
+  if (!res.ok) {
+    const body = await res.text()
+    console.error('Drive API error', res.status, body)
+    return NextResponse.json({ error: 'Drive API error', status: res.status, body }, { status: res.status })
+  }
 
   const { modifiedTime } = await res.json()
   return NextResponse.json({ modifiedTime })
