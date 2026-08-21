@@ -81,9 +81,10 @@ function ProgressBar({ value, color = 'bg-[var(--nova-blue)]' }: { value: number
 }
 
 export default function ArianePage() {
-  const [loading, setLoading]   = useState(false)
-  const [leads, setLeads]       = useState<Lead[]>([])
-  const [loaded, setLoaded]     = useState(false)
+  const [loading, setLoading]       = useState(false)
+  const [leads, setLeads]           = useState<Lead[]>([])
+  const [loaded, setLoaded]         = useState(false)
+  const [ultimaAtt, setUltimaAtt]   = useState<string>('')
   const [busca, setBusca]       = useState('')
   const [cidadeF, setCidadeF]   = useState('Todas')
   const [apenasNaoAtendidos, setApenasNaoAtendidos] = useState(false)
@@ -117,6 +118,7 @@ export default function ArianePage() {
       })).filter(l => l.codigo)
       setLeads(parsed)
       setLoaded(true)
+      setUltimaAtt(new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }))
     } finally {
       setLoading(false)
     }
@@ -224,11 +226,18 @@ export default function ArianePage() {
               </div>
 
               {loaded && (
-                <button onClick={carregar} disabled={loading}
-                  className="mt-4 w-full flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-md border border-[var(--nova-border)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text)] hover:bg-white/[0.04] transition-nova disabled:opacity-50"
-                >
-                  <RefreshCw size={11} className={loading ? 'animate-spin' : ''} /> Atualizar dados
-                </button>
+                <div className="mt-4 w-full space-y-1.5">
+                  <button onClick={carregar} disabled={loading}
+                    className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-md border border-[var(--nova-border)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text)] hover:bg-white/[0.04] transition-nova disabled:opacity-50"
+                  >
+                    <RefreshCw size={11} className={loading ? 'animate-spin' : ''} /> Atualizar dados
+                  </button>
+                  {ultimaAtt && (
+                    <p className="text-[0.6rem] text-[var(--nova-text-dim)] text-center">
+                      Atualizado em {ultimaAtt}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </div>
