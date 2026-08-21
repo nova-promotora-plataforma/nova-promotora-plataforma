@@ -96,6 +96,11 @@ export default function ArianePage() {
     try {
       const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`
       const res = await fetch(url, { cache: 'no-store' })
+      const lastMod = res.headers.get('last-modified') || res.headers.get('date')
+      if (lastMod) {
+        const d = new Date(lastMod)
+        setUltimaAtt(d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }))
+      }
       const buf = await res.arrayBuffer()
       const text = new TextDecoder('utf-8').decode(buf)
       const rows = parseCSV(text)
@@ -118,7 +123,6 @@ export default function ArianePage() {
       })).filter(l => l.codigo)
       setLeads(parsed)
       setLoaded(true)
-      setUltimaAtt(new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }))
     } finally {
       setLoading(false)
     }
@@ -234,7 +238,7 @@ export default function ArianePage() {
                   </button>
                   {ultimaAtt && (
                     <p className="text-[0.6rem] text-[var(--nova-text-dim)] text-center">
-                      Atualizado em {ultimaAtt}
+                      Planilha atualizada em {ultimaAtt}
                     </p>
                   )}
                 </div>
