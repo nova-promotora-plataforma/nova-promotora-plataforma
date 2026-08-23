@@ -298,6 +298,8 @@ export default function DisparosDashboardPage() {
   const [filtroLead, setFiltroLead] = useState<FiltroLead>('todos')
   const [producao, setProducao]     = useState<Record<string, ProducaoLead>>({})
   const [producaoLoading, setProducaoLoading] = useState(false)
+  const [sortCol, setSortCol]       = useState<string | null>(null)
+  const [sortDir, setSortDir]       = useState<'asc' | 'desc'>('asc')
 
   const c = CAMPANHAS.find(x => x.id === selectedId) ?? CAMPANHAS[0]
 
@@ -345,6 +347,11 @@ export default function DisparosDashboardPage() {
 
   useEffect(() => { carregarLeads(selectedId) }, [selectedId, carregarLeads])
 
+  const handleSort = (col: string) => {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortCol(col); setSortDir('asc') }
+  }
+
   const leadsFiltrados = leads.filter(l => {
     const q = buscaLead.toLowerCase()
     const matchBusca = !q || l.nome.toLowerCase().includes(q) || l.whatsapp.includes(q)
@@ -356,6 +363,31 @@ export default function DisparosDashboardPage() {
       filtroLead === 'entregue'  ? s === 'delivered' :
       filtroLead === 'falha'     ? s === 'failed' : true
     return matchBusca && matchFiltro
+  }).sort((a, b) => {
+    if (!sortCol) return 0
+    const dir = sortDir === 'asc' ? 1 : -1
+    const phone = (l: LeadDisparo) => l.whatsapp.replace(/^55/, '')
+    if (sortCol === 'nome') return dir * a.nome.localeCompare(b.nome)
+    if (sortCol === 'status') return dir * a.status.localeCompare(b.status)
+    if (sortCol === 'enviado') return dir * (a.enviado_em > b.enviado_em ? 1 : -1)
+    if (sortCol === 'pre') {
+      const va = producao[phone(a)]?.pre ?? -1
+      const vb = producao[phone(b)]?.pre ?? -1
+      return dir * (va - vb)
+    }
+    if (sortCol === 'pos') {
+      const va = producao[phone(a)]?.pos ?? -1
+      const vb = producao[phone(b)]?.pos ?? -1
+      return dir * (va - vb)
+    }
+    if (sortCol === 'variacao') {
+      const calc = (l: LeadDisparo) => {
+        const p = producao[phone(l)]
+        return p && p.pre > 0 ? (p.pos - p.pre) / p.pre : -Infinity
+      }
+      return dir * (calc(a) - calc(b))
+    }
+    return 0
   })
 
   // Se tem CSV carregado, calcula funil a partir dos dados reais
@@ -635,19 +667,37 @@ export default function DisparosDashboardPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-[var(--nova-bg-elev-2)]">
-                      {['Nome', 'Telefone', 'Status', 'Enviado', 'Entregue', 'Lido', 'Respondeu', 'Erro'].map(h => (
-                        <th key={h} className="px-3 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)] whitespace-nowrap">{h}</th>
+                      {([
+                        { label: 'Nome',      col: 'nome' },
+                        { label: 'Telefone',  col: null },
+                        { label: 'Status',    col: 'status' },
+                        { label: 'Enviado',   col: 'enviado' },
+                        { label: 'Entregue',  col: null },
+                        { label: 'Lido',      col: null },
+                        { label: 'Respondeu', col: null },
+                        { label: 'Erro',      col: null },
+                      ] as { label: string; col: string | null }[]).map(h => (
+                        <th
+                          key={h.label}
+                          onClick={() => h.col && handleSort(h.col)}
+                          className={cn(
+                            'px-3 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)] whitespace-nowrap',
+                            h.col && 'cursor-pointer hover:text-[var(--nova-text)] select-none',
+                          )}
+                        >
+                          {h.label}{h.col && sortCol === h.col ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                        </th>
                       ))}
                       {Object.keys(producao).length > 0 && (
                         <>
-                          <th className="px-3 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-indigo-400 whitespace-nowrap">
-                            Prod. Pré{producaoLoading ? ' …' : ''}
+                          <th onClick={() => handleSort('pre')} className="px-3 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-indigo-400 whitespace-nowrap cursor-pointer hover:opacity-80 select-none">
+                            Prod. Pré{producaoLoading ? ' …' : sortCol === 'pre' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </th>
-                          <th className="px-3 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-emerald-400 whitespace-nowrap">
-                            Prod. Pós
+                          <th onClick={() => handleSort('pos')} className="px-3 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-emerald-400 whitespace-nowrap cursor-pointer hover:opacity-80 select-none">
+                            Prod. Pós{sortCol === 'pos' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </th>
-                          <th className="px-3 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)] whitespace-nowrap">
-                            Variação
+                          <th onClick={() => handleSort('variacao')} className="px-3 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)] whitespace-nowrap cursor-pointer hover:text-[var(--nova-text)] select-none">
+                            Variação{sortCol === 'variacao' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </th>
                         </>
                       )}
