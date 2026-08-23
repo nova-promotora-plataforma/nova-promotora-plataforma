@@ -72,6 +72,14 @@ interface Campanha {
   respostas: number
   falhas: number
   sheetId?: string
+  codesSheetId?: string
+  producaoSheetId?: string
+}
+
+interface ProducaoLead {
+  pre: number   // jan-abr/26
+  pos: number   // mai-jul/26
+  meses: number[]
 }
 
 const CAMPANHAS: Campanha[] = [
@@ -87,6 +95,8 @@ const CAMPANHAS: Campanha[] = [
     respostas: 301,
     falhas: 412,
     sheetId: '12tz0NKqNUj54VWp5CH5zcrIPgbOBUelTzfCk_5mlLlI',
+    codesSheetId: '1x8b8q-WDN0YgdJMF_X5wxiFqRARxPSkqmtRxfgNULBw',
+    producaoSheetId: '1DKMEpaCPK4vTVvh-ZFrTjJ__b0sUSKOD5Zjstt2JrQw',
   },
   {
     id: 'elegiveis-sem-debito-20-50',
@@ -111,6 +121,7 @@ const CAMPANHAS: Campanha[] = [
     lidos: 58,
     respostas: 28,
     falhas: 80,
+    sheetId: '1I1xyv6k6ga5iL5wfZ18mn7MZ_XOldwGfxc9uBURWW7k',
   },
   {
     id: 'elegiveis-sem-debito-2a-100-200',
@@ -272,6 +283,8 @@ export default function DisparosDashboardPage() {
   const [leadsError, setLeadsError] = useState<'none' | 'not_found' | 'error'>('none')
   const [buscaLead, setBuscaLead]   = useState('')
   const [filtroLead, setFiltroLead] = useState<FiltroLead>('todos')
+  const [producao, setProducao]     = useState<Record<string, ProducaoLead>>({})
+  const [producaoLoading, setProducaoLoading] = useState(false)
 
   const c = CAMPANHAS.find(x => x.id === selectedId) ?? CAMPANHAS[0]
 
@@ -279,6 +292,7 @@ export default function DisparosDashboardPage() {
     setLeadsLoading(true)
     setLeadsError('none')
     setLeads([])
+    setProducao({})
     setBuscaLead('')
     setFiltroLead('todos')
     try {
@@ -296,6 +310,19 @@ export default function DisparosDashboardPage() {
         text = await res.text()
       }
       setLeads(parseLeadsCSV(text))
+
+      if (campanha?.codesSheetId && campanha?.producaoSheetId) {
+        setProducaoLoading(true)
+        try {
+          const pRes = await fetch(
+            `/api/producao-leads?codesSheetId=${campanha.codesSheetId}&producaoSheetId=${campanha.producaoSheetId}`,
+            { cache: 'no-store' },
+          )
+          if (pRes.ok) setProducao(await pRes.json())
+        } catch { /* silently ignore */ } finally {
+          setProducaoLoading(false)
+        }
+      }
     } catch {
       setLeadsError('error')
     } finally {
@@ -598,10 +625,32 @@ export default function DisparosDashboardPage() {
                       {['Nome', 'Telefone', 'Status', 'Enviado', 'Entregue', 'Lido', 'Respondeu', 'Erro'].map(h => (
                         <th key={h} className="px-3 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)] whitespace-nowrap">{h}</th>
                       ))}
+                      {Object.keys(producao).length > 0 && (
+                        <>
+                          <th className="px-3 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-indigo-400 whitespace-nowrap">
+                            Prod. Pré{producaoLoading ? ' …' : ''}
+                          </th>
+                          <th className="px-3 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-emerald-400 whitespace-nowrap">
+                            Prod. Pós
+                          </th>
+                          <th className="px-3 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)] whitespace-nowrap">
+                            Variação
+                          </th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--nova-border)]/50">
-                    {leadsFiltrados.slice(0, 200).map((l, i) => (
+                    {leadsFiltrados.slice(0, 200).map((l, i) => {
+                      const phone = l.whatsapp.replace(/^55/, '')
+                      const prod = producao[phone]
+                      const fmtBRL = (v: number) => v > 0
+                        ? 'R$ ' + new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }).format(v)
+                        : '—'
+                      const variacao = prod && prod.pre > 0
+                        ? ((prod.pos - prod.pre) / prod.pre) * 100
+                        : null
+                      return (
                       <tr key={i} className={cn('hover:bg-white/[0.02]', l.respondeu_em && 'bg-amber-500/[0.03]')}>
                         <td className="px-3 py-2 font-medium text-[var(--nova-text)] whitespace-nowrap max-w-[220px] truncate" title={l.nome}>{l.nome}</td>
                         <td className="px-3 py-2 text-[var(--nova-text-muted)] whitespace-nowrap">
@@ -620,8 +669,26 @@ export default function DisparosDashboardPage() {
                             : <span className="text-[var(--nova-text-dim)]">—</span>}
                         </td>
                         <td className="px-3 py-2 text-xs text-red-400 max-w-[160px] truncate" title={l.erro}>{l.erro || '—'}</td>
+                        {Object.keys(producao).length > 0 && (
+                          <>
+                            <td className="px-3 py-2 text-xs text-indigo-300 whitespace-nowrap font-medium">
+                              {prod ? fmtBRL(prod.pre) : producaoLoading ? '…' : '—'}
+                            </td>
+                            <td className="px-3 py-2 text-xs text-emerald-300 whitespace-nowrap font-medium">
+                              {prod ? fmtBRL(prod.pos) : '—'}
+                            </td>
+                            <td className="px-3 py-2 text-xs whitespace-nowrap">
+                              {variacao !== null ? (
+                                <span className={cn('font-semibold', variacao >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                                  {variacao >= 0 ? '+' : ''}{variacao.toFixed(1)}%
+                                </span>
+                              ) : '—'}
+                            </td>
+                          </>
+                        )}
                       </tr>
-                    ))}
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
