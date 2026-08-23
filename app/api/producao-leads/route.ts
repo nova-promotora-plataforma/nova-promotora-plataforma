@@ -28,22 +28,47 @@ async function fetchCSV(url: string): Promise<string> {
   return res.text()
 }
 
+const MONTHS = ['jan/26', 'fev/26', 'mar/26', 'abr/26', 'mai/26', 'jun/26', 'jul/26']
+
+function buildAgregado(prodRaw: string, leadCodes: Set<string>) {
+  const lines = prodRaw.split('\n').filter(Boolean)
+  const h = parseCSVLine(lines[0])
+  const codigoIdx = h.indexOf('codigo')
+  const monthIdxs = MONTHS.map(m => h.indexOf(m))
+
+  const totals = MONTHS.map(() => 0)
+  let count = 0
+
+  lines.slice(1).forEach(line => {
+    const cols = parseCSVLine(line)
+    if (!leadCodes.has(cols[codigoIdx])) return
+    count++
+    monthIdxs.forEach((mi, i) => { totals[i] += parseBRL(cols[mi] ?? '') })
+  })
+
+  const pre = totals.slice(0, 4).reduce((s, v) => s + v, 0)
+  const pos = totals.slice(4).reduce((s, v) => s + v, 0)
+  return { meses: totals, pre, pos, count }
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
-  const codesSheetId  = searchParams.get('codesSheetId')
+  const codesSheetId   = searchParams.get('codesSheetId')
   const producaoSheetId = searchParams.get('producaoSheetId')
+  const tabsParam      = searchParams.get('tabs') // comma-separated, e.g. "INSS,FGTS"
 
   if (!codesSheetId || !producaoSheetId) {
     return NextResponse.json({ error: 'codesSheetId and producaoSheetId required' }, { status: 400 })
   }
 
-  try {
-    const [codesRaw, prodRaw] = await Promise.all([
-      fetchCSV(`https://docs.google.com/spreadsheets/d/${codesSheetId}/gviz/tq?tqx=out:csv&sheet=Sheet1`),
-      fetchCSV(`https://docs.google.com/spreadsheets/d/${producaoSheetId}/gviz/tq?tqx=out:csv&sheet=Sheet1`),
-    ])
+  const tabs = tabsParam ? tabsParam.split(',').map(t => t.trim()).filter(Boolean) : []
 
-    // Build phone → codigo map from codes sheet
+  try {
+    const codesRaw = await fetchCSV(
+      `https://docs.google.com/spreadsheets/d/${codesSheetId}/gviz/tq?tqx=out:csv&sheet=Sheet1`
+    )
+
+    // Build phone → codigo map
     const codesLines = codesRaw.split('\n').filter(Boolean)
     const codesH = parseCSVLine(codesLines[0])
     const codigoIdx = codesH.indexOf('codigo_nova')
@@ -57,8 +82,17 @@ export async function GET(req: NextRequest) {
       if (code && phone) phoneToCode.set(phone, code)
     })
 
-    // Build codigo → production map
-    const MONTHS = ['jan/26','fev/26','mar/26','abr/26','mai/26','jun/26','jul/26']
+    const leadCodes = new Set(phoneToCode.values())
+
+    // Fetch total + product tabs in parallel
+    const [prodRaw, ...tabsRaw] = await Promise.all([
+      fetchCSV(`https://docs.google.com/spreadsheets/d/${producaoSheetId}/gviz/tq?tqx=out:csv&sheet=Sheet1`),
+      ...tabs.map(tab =>
+        fetchCSV(`https://docs.google.com/spreadsheets/d/${producaoSheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`)
+      ),
+    ])
+
+    // Build codigo → monthly values (total tab)
     const prodLines = prodRaw.split('\n').filter(Boolean)
     const prodH = parseCSVLine(prodLines[0])
     const bCodigoIdx = prodH.indexOf('codigo')
@@ -69,22 +103,28 @@ export async function GET(req: NextRequest) {
       const cols = parseCSVLine(line)
       const cod = cols[bCodigoIdx]
       if (!cod) return
-      const vals = monthIdxs.map(i => parseBRL(cols[i] ?? ''))
-      codeToProd.set(cod, vals)
+      codeToProd.set(cod, monthIdxs.map(i => parseBRL(cols[i] ?? '')))
     })
 
-    // Build phone → { pre, pos, meses } result
-    const result: Record<string, { pre: number; pos: number; meses: number[] }> = {}
-
+    // Per-lead result
+    const porLead: Record<string, { pre: number; pos: number; meses: number[] }> = {}
     phoneToCode.forEach((cod, phone) => {
       const meses = codeToProd.get(cod)
       if (!meses) return
-      const pre = meses.slice(0, 4).reduce((s, v) => s + v, 0) // jan-abr
-      const pos = meses.slice(4).reduce((s, v) => s + v, 0)    // mai-jul
-      result[phone] = { pre, pos, meses }
+      const pre = meses.slice(0, 4).reduce((s, v) => s + v, 0)
+      const pos = meses.slice(4).reduce((s, v) => s + v, 0)
+      porLead[phone] = { pre, pos, meses }
     })
 
-    return NextResponse.json(result)
+    // Aggregated totals
+    const agregado: Record<string, { meses: number[]; pre: number; pos: number; count: number }> = {
+      total: buildAgregado(prodRaw, leadCodes),
+    }
+    tabs.forEach((tab, i) => {
+      agregado[tab] = buildAgregado(tabsRaw[i], leadCodes)
+    })
+
+    return NextResponse.json({ porLead, agregado, meses: MONTHS })
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }

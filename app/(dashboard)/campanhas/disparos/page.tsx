@@ -87,12 +87,26 @@ interface Campanha {
   sheetId?: string
   codesSheetId?: string
   producaoSheetId?: string
+  producaoTabs?: string[]
 }
 
 interface ProducaoLead {
-  pre: number   // jan-abr/26
-  pos: number   // mai-jul/26
+  pre: number
+  pos: number
   meses: number[]
+}
+
+interface ProducaoAgregado {
+  meses: number[]
+  pre: number
+  pos: number
+  count: number
+}
+
+interface ProducaoData {
+  porLead:  Record<string, ProducaoLead>
+  agregado: Record<string, ProducaoAgregado>
+  meses:    string[]
 }
 
 const CAMPANHAS: Campanha[] = [
@@ -110,6 +124,7 @@ const CAMPANHAS: Campanha[] = [
     sheetId: '12tz0NKqNUj54VWp5CH5zcrIPgbOBUelTzfCk_5mlLlI',
     codesSheetId: '1x8b8q-WDN0YgdJMF_X5wxiFqRARxPSkqmtRxfgNULBw',
     producaoSheetId: '1DKMEpaCPK4vTVvh-ZFrTjJ__b0sUSKOD5Zjstt2JrQw',
+    producaoTabs: ['INSS', 'FGTS'],
   },
   {
     id: 'elegiveis-sem-debito-20-50',
@@ -296,7 +311,7 @@ export default function DisparosDashboardPage() {
   const [leadsError, setLeadsError] = useState<'none' | 'not_found' | 'error'>('none')
   const [buscaLead, setBuscaLead]   = useState('')
   const [filtroLead, setFiltroLead] = useState<FiltroLead>('todos')
-  const [producao, setProducao]     = useState<Record<string, ProducaoLead>>({})
+  const [producaoData, setProducaoData] = useState<ProducaoData | null>(null)
   const [producaoLoading, setProducaoLoading] = useState(false)
   const [sortCol, setSortCol]       = useState<string | null>(null)
   const [sortDir, setSortDir]       = useState<'asc' | 'desc'>('asc')
@@ -307,7 +322,7 @@ export default function DisparosDashboardPage() {
     setLeadsLoading(true)
     setLeadsError('none')
     setLeads([])
-    setProducao({})
+    setProducaoData(null)
     setBuscaLead('')
     setFiltroLead('todos')
     try {
@@ -329,11 +344,12 @@ export default function DisparosDashboardPage() {
       if (campanha?.codesSheetId && campanha?.producaoSheetId) {
         setProducaoLoading(true)
         try {
+          const tabs = campanha.producaoTabs?.join(',') ?? ''
           const pRes = await fetch(
-            `/api/producao-leads?codesSheetId=${campanha.codesSheetId}&producaoSheetId=${campanha.producaoSheetId}`,
+            `/api/producao-leads?codesSheetId=${campanha.codesSheetId}&producaoSheetId=${campanha.producaoSheetId}&tabs=${tabs}`,
             { cache: 'no-store' },
           )
-          if (pRes.ok) setProducao(await pRes.json())
+          if (pRes.ok) setProducaoData(await pRes.json())
         } catch { /* silently ignore */ } finally {
           setProducaoLoading(false)
         }
@@ -371,18 +387,18 @@ export default function DisparosDashboardPage() {
     if (sortCol === 'status') return dir * a.status.localeCompare(b.status)
     if (sortCol === 'enviado') return dir * (a.enviado_em > b.enviado_em ? 1 : -1)
     if (sortCol === 'pre') {
-      const va = producao[phone(a)]?.pre ?? -1
-      const vb = producao[phone(b)]?.pre ?? -1
+      const va = producaoData?.porLead[phone(a)]?.pre ?? -1
+      const vb = producaoData?.porLead[phone(b)]?.pre ?? -1
       return dir * (va - vb)
     }
     if (sortCol === 'pos') {
-      const va = producao[phone(a)]?.pos ?? -1
-      const vb = producao[phone(b)]?.pos ?? -1
+      const va = producaoData?.porLead[phone(a)]?.pos ?? -1
+      const vb = producaoData?.porLead[phone(b)]?.pos ?? -1
       return dir * (va - vb)
     }
     if (sortCol === 'variacao') {
       const calc = (l: LeadDisparo) => {
-        const p = producao[phone(l)]
+        const p = producaoData?.porLead[phone(l)]
         return p && p.pre > 0 ? (p.pos - p.pre) / p.pre : -Infinity
       }
       return dir * (calc(a) - calc(b))
@@ -602,6 +618,149 @@ export default function DisparosDashboardPage() {
           </div>
         </div>
 
+        {/* Produção dos parceiros */}
+        {(producaoData || producaoLoading) && (() => {
+          const ag = producaoData?.agregado
+          const meses = producaoData?.meses ?? []
+          const total = ag?.total
+          const tabs = c.producaoTabs ?? []
+          const fmtM = (v: number) => 'R$ ' + new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }).format(v)
+          const fmtFull = (v: number) => 'R$ ' + new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(v)
+          const varPct = total && total.pre > 0 ? ((total.pos - total.pre) / total.pre) * 100 : null
+
+          const PRODUTO_COLORS: Record<string, string> = {
+            INSS: '#6366f1', FGTS: '#22c55e', Pessoal: '#f59e0b', CDC: '#3b82f6',
+          }
+
+          // Build analysis text
+          const analise = (() => {
+            if (!total) return ''
+            const linhas: string[] = []
+            if (varPct !== null) {
+              const dir = varPct >= 0 ? 'crescimento' : 'queda'
+              linhas.push(`A produção dos ${total.count.toLocaleString('pt-BR')} parceiros impactados pelo disparo apresentou ${dir} de ${Math.abs(varPct).toFixed(1)}% no período pós-disparo (mai–jul/26) em relação ao pré-disparo (jan–abr/26), passando de ${fmtFull(total.pre)} para ${fmtFull(total.pos)}.`)
+            }
+            const peakIdx = total.meses.indexOf(Math.max(...total.meses))
+            linhas.push(`O mês de maior produção foi ${meses[peakIdx] ?? '—'} com ${fmtFull(total.meses[peakIdx] ?? 0)}.`)
+            if (tabs.length > 0 && ag) {
+              const dominante = tabs.reduce((a, b) => ((ag[a]?.pre ?? 0) > (ag[b]?.pre ?? 0) ? a : b), tabs[0])
+              const domShare = total.pre > 0 ? ((ag[dominante]?.pre ?? 0) / total.pre * 100).toFixed(1) : '—'
+              linhas.push(`Por produto, ${dominante} é o principal, representando ${domShare}% da produção pré-disparo.`)
+            }
+            const jul = total.meses[6] ?? 0
+            const jun = total.meses[5] ?? 0
+            if (jul < jun * 0.5) linhas.push('Nota: os dados de jul/26 podem estar incompletos na base.')
+            return linhas.join(' ')
+          })()
+
+          const chartData = meses.map((m, i) => {
+            const row: Record<string, string | number> = { mes: m, Total: total?.meses[i] ?? 0 }
+            tabs.forEach(tab => { row[tab] = ag?.[tab]?.meses[i] ?? 0 })
+            return row
+          })
+
+          return (
+            <div className="rounded-lg border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] overflow-hidden">
+              <div className="px-4 py-3 border-b border-[var(--nova-border)] flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-[var(--nova-text)]">Produção dos parceiros impactados</p>
+                  <p className="text-xs text-[var(--nova-text-dim)] mt-0.5">Histórico mensal jan–jul/26 · parceiros do disparo</p>
+                </div>
+                {producaoLoading && !producaoData && (
+                  <div className="flex items-center gap-1.5 text-xs text-[var(--nova-text-dim)]">
+                    <Loader2 size={13} className="animate-spin" /> Carregando produção…
+                  </div>
+                )}
+              </div>
+
+              {producaoData && (
+                <>
+                  {/* KPI pré/pós */}
+                  <div className="grid grid-cols-3 divide-x divide-[var(--nova-border)] border-b border-[var(--nova-border)]">
+                    {[
+                      { label: 'Produção Pré-disparo', sub: 'jan–abr/26', value: total?.pre ?? 0, color: 'text-indigo-400' },
+                      { label: 'Produção Pós-disparo', sub: 'mai–jul/26', value: total?.pos ?? 0, color: 'text-emerald-400' },
+                      { label: 'Variação', sub: 'pré → pós', value: varPct, color: varPct !== null && varPct >= 0 ? 'text-emerald-400' : 'text-red-400' },
+                    ].map(k => (
+                      <div key={k.label} className="px-5 py-4">
+                        <p className="text-[0.65rem] text-[var(--nova-text-dim)] uppercase tracking-wide">{k.label}</p>
+                        <p className={cn('text-2xl font-bold mt-1', k.color)}>
+                          {k.label === 'Variação'
+                            ? (varPct !== null ? (varPct >= 0 ? '+' : '') + varPct.toFixed(1) + '%' : '—')
+                            : fmtFull(k.value as number)}
+                        </p>
+                        <p className="text-[0.6rem] text-[var(--nova-text-dim)] mt-0.5">{k.sub}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Gráfico mensal */}
+                  <div className="p-4 border-b border-[var(--nova-border)]">
+                    <p className="text-xs font-medium text-[var(--nova-text-dim)] mb-3 uppercase tracking-wide">Evolução mensal</p>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={chartData} barCategoryGap={12}>
+                        <XAxis dataKey="mes" tick={{ fontSize: 11, fill: 'var(--nova-text-muted)' }} axisLine={false} tickLine={false} />
+                        <YAxis tickFormatter={v => fmtM(v)} tick={{ fontSize: 10, fill: 'var(--nova-text-muted)' }} axisLine={false} tickLine={false} width={70} />
+                        <Tooltip
+                          formatter={(v: number, name: string) => [fmtFull(v), name]}
+                          contentStyle={{ background: 'var(--nova-bg-elev-2)', border: '1px solid var(--nova-border)', borderRadius: 6, fontSize: 12 }}
+                        />
+                        <Bar dataKey="Total" fill="#6366f1" radius={[3,3,0,0]} name="Total" />
+                        {tabs.map(tab => (
+                          <Bar key={tab} dataKey={tab} fill={PRODUTO_COLORS[tab] ?? '#94a3b8'} radius={[3,3,0,0]} name={tab} />
+                        ))}
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Breakdown por produto */}
+                  {tabs.length > 0 && (
+                    <div className="grid divide-x divide-[var(--nova-border)]" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
+                      {tabs.map(tab => {
+                        const p = ag?.[tab]
+                        const pv = p && p.pre > 0 ? ((p.pos - p.pre) / p.pre) * 100 : null
+                        const color = PRODUTO_COLORS[tab] ?? '#94a3b8'
+                        return (
+                          <div key={tab} className="px-5 py-4 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full" style={{ background: color }} />
+                              <p className="text-xs font-semibold text-[var(--nova-text)]">{tab}</p>
+                              <span className="text-[0.6rem] text-[var(--nova-text-dim)]">{p?.count.toLocaleString('pt-BR')} parceiros</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 mt-1">
+                              <div>
+                                <p className="text-[0.6rem] text-[var(--nova-text-dim)]">Pré</p>
+                                <p className="text-sm font-bold text-indigo-300">{fmtM(p?.pre ?? 0)}</p>
+                              </div>
+                              <div>
+                                <p className="text-[0.6rem] text-[var(--nova-text-dim)]">Pós</p>
+                                <p className="text-sm font-bold text-emerald-300">{fmtM(p?.pos ?? 0)}</p>
+                              </div>
+                            </div>
+                            {pv !== null && (
+                              <p className={cn('text-xs font-semibold', pv >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                                {pv >= 0 ? '+' : ''}{pv.toFixed(1)}% variação
+                              </p>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* Análise escrita */}
+                  {analise && (
+                    <div className="px-5 py-4 border-t border-[var(--nova-border)] bg-[var(--nova-bg-elev-2)]">
+                      <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--nova-text-dim)] mb-1.5">Análise</p>
+                      <p className="text-xs text-[var(--nova-text)] leading-relaxed">{analise}</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )
+        })()}
+
         {/* Base de leads do disparo */}
         <div className="rounded-lg border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] overflow-hidden">
           <div className="px-4 py-3 border-b border-[var(--nova-border)] flex items-center justify-between">
@@ -688,7 +847,7 @@ export default function DisparosDashboardPage() {
                           {h.label}{h.col && sortCol === h.col ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                         </th>
                       ))}
-                      {Object.keys(producao).length > 0 && (
+                      {Object.keys(producaoData?.porLead ?? {}).length > 0 && (
                         <>
                           <th onClick={() => handleSort('pre')} className="px-3 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-indigo-400 whitespace-nowrap cursor-pointer hover:opacity-80 select-none">
                             Prod. Pré{producaoLoading ? ' …' : sortCol === 'pre' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
@@ -706,7 +865,7 @@ export default function DisparosDashboardPage() {
                   <tbody className="divide-y divide-[var(--nova-border)]/50">
                     {leadsFiltrados.slice(0, 200).map((l, i) => {
                       const phone = l.whatsapp.replace(/^55/, '')
-                      const prod = producao[phone]
+                      const prod = producaoData?.porLead[phone]
                       const fmtBRL = (v: number) => v > 0
                         ? 'R$ ' + new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }).format(v)
                         : '—'
@@ -732,7 +891,7 @@ export default function DisparosDashboardPage() {
                             : <span className="text-[var(--nova-text-dim)]">—</span>}
                         </td>
                         <td className="px-3 py-2 text-xs text-red-400 max-w-[160px] truncate" title={l.erro}>{l.erro || '—'}</td>
-                        {Object.keys(producao).length > 0 && (
+                        {Object.keys(producaoData?.porLead ?? {}).length > 0 && (
                           <>
                             <td className="px-3 py-2 text-xs text-indigo-300 whitespace-nowrap font-medium">
                               {prod ? fmtBRL(prod.pre) : producaoLoading ? '…' : '—'}
