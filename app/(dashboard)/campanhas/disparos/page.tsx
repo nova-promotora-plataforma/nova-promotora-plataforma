@@ -1,12 +1,64 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { TopBar } from '@/components/layout/TopBar'
-import { ChevronDown, Send, CheckCheck, Eye, MessageSquare, XCircle, Users } from 'lucide-react'
+import { ChevronDown, Send, CheckCheck, Eye, MessageSquare, XCircle, Users, Phone, Loader2, Search, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
+
+interface LeadDisparo {
+  nome:         string
+  whatsapp:     string
+  status:       string
+  enviado_em:   string
+  entregue_em:  string
+  lido_em:      string
+  respondeu_em: string
+  erro:         string
+}
+
+function parseLeadsCSV(csv: string): LeadDisparo[] {
+  const lines = csv.split('\n').filter(Boolean)
+  if (lines.length < 2) return []
+  return lines.slice(1).map(line => {
+    const cols = line.split(',')
+    return {
+      nome:         cols[0]?.trim() ?? '',
+      whatsapp:     cols[1]?.trim() ?? '',
+      status:       cols[3]?.trim() ?? '',
+      enviado_em:   cols[4]?.trim() ?? '',
+      entregue_em:  cols[5]?.trim() ?? '',
+      lido_em:      cols[6]?.trim() ?? '',
+      respondeu_em: cols[7]?.trim() ?? '',
+      erro:         cols[8]?.trim() ?? '',
+    }
+  }).filter(l => l.nome)
+}
+
+function fmtHorario(iso: string) {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    read:      { label: 'Lido',       cls: 'bg-blue-500/15 text-blue-400' },
+    delivered: { label: 'Entregue',   cls: 'bg-green-500/15 text-green-400' },
+    sent:      { label: 'Enviado',    cls: 'bg-indigo-500/15 text-indigo-400' },
+    failed:    { label: 'Falha',      cls: 'bg-red-500/15 text-red-400' },
+    replied:   { label: 'Respondeu',  cls: 'bg-amber-500/15 text-amber-400' },
+  }
+  const s = status.toLowerCase()
+  const cfg = map[s] ?? { label: status, cls: 'bg-white/10 text-[var(--nova-text-dim)]' }
+  return (
+    <span className={cn('inline-flex items-center text-[0.65rem] font-medium px-2 py-0.5 rounded-full', cfg.cls)}>
+      {cfg.label}
+    </span>
+  )
+}
 
 interface Campanha {
   id: string
@@ -208,11 +260,52 @@ function BenchmarkBar({ campanhas }: { campanhas: Campanha[] }) {
   )
 }
 
+type FiltroLead = 'todos' | 'respondeu' | 'lido' | 'entregue' | 'falha'
+
 export default function DisparosDashboardPage() {
   const [selectedId, setSelectedId] = useState(CAMPANHAS[0].id)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen]             = useState(false)
+  const [leads, setLeads]           = useState<LeadDisparo[]>([])
+  const [leadsLoading, setLeadsLoading] = useState(false)
+  const [leadsError, setLeadsError] = useState<'none' | 'not_found' | 'error'>('none')
+  const [buscaLead, setBuscaLead]   = useState('')
+  const [filtroLead, setFiltroLead] = useState<FiltroLead>('todos')
 
   const c = CAMPANHAS.find(x => x.id === selectedId) ?? CAMPANHAS[0]
+
+  const carregarLeads = useCallback(async (id: string) => {
+    setLeadsLoading(true)
+    setLeadsError('none')
+    setLeads([])
+    setBuscaLead('')
+    setFiltroLead('todos')
+    try {
+      const res = await fetch(`/campanhas/${id}.csv`, { cache: 'no-store' })
+      if (res.status === 404) { setLeadsError('not_found'); return }
+      if (!res.ok)            { setLeadsError('error'); return }
+      const text = await res.text()
+      setLeads(parseLeadsCSV(text))
+    } catch {
+      setLeadsError('error')
+    } finally {
+      setLeadsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { carregarLeads(selectedId) }, [selectedId, carregarLeads])
+
+  const leadsFiltrados = leads.filter(l => {
+    const q = buscaLead.toLowerCase()
+    const matchBusca = !q || l.nome.toLowerCase().includes(q) || l.whatsapp.includes(q)
+    const s = l.status.toLowerCase()
+    const matchFiltro =
+      filtroLead === 'todos'     ? true :
+      filtroLead === 'respondeu' ? !!l.respondeu_em :
+      filtroLead === 'lido'      ? s === 'read' :
+      filtroLead === 'entregue'  ? s === 'delivered' :
+      filtroLead === 'falha'     ? s === 'failed' : true
+    return matchBusca && matchFiltro
+  })
 
   const kpis = [
     {
@@ -410,6 +503,110 @@ export default function DisparosDashboardPage() {
               )
             })}
           </div>
+        </div>
+
+        {/* Base de leads do disparo */}
+        <div className="rounded-lg border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--nova-border)] flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-[var(--nova-text)]">Base de leads</p>
+              <p className="text-xs text-[var(--nova-text-dim)] mt-0.5">Resultado individual por contato</p>
+            </div>
+            {leads.length > 0 && (
+              <span className="text-[0.625rem] font-medium text-[var(--nova-text-dim)] bg-[var(--nova-bg-elev-2)] px-2 py-1 rounded">
+                {leadsFiltrados.length} de {leads.length} leads
+              </span>
+            )}
+          </div>
+
+          {leadsLoading && (
+            <div className="flex items-center justify-center gap-2 py-12 text-sm text-[var(--nova-text-dim)]">
+              <Loader2 size={16} className="animate-spin" /> Carregando leads…
+            </div>
+          )}
+
+          {!leadsLoading && leadsError === 'not_found' && (
+            <div className="flex flex-col items-center justify-center py-12 gap-2 text-[var(--nova-text-dim)]">
+              <AlertCircle size={20} className="opacity-40" />
+              <p className="text-sm">Dados detalhados não disponíveis para este disparo</p>
+              <p className="text-xs opacity-60">Suba o CSV do disparo para visualizar lead a lead</p>
+            </div>
+          )}
+
+          {!leadsLoading && leadsError === 'none' && leads.length > 0 && (
+            <>
+              {/* Filtros de lead */}
+              <div className="px-4 py-3 border-b border-[var(--nova-border)] flex flex-wrap gap-2 items-center">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--nova-text-dim)]" />
+                  <input
+                    value={buscaLead}
+                    onChange={e => setBuscaLead(e.target.value)}
+                    placeholder="Buscar por nome ou telefone…"
+                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md border border-[var(--nova-border)] bg-[var(--nova-bg-elev-2)] text-[var(--nova-text)] placeholder:text-[var(--nova-text-dim)] focus:outline-none focus:ring-1 focus:ring-[var(--nova-blue)]"
+                  />
+                </div>
+                <div className="flex gap-1">
+                  {([
+                    { k: 'todos',     label: 'Todos' },
+                    { k: 'respondeu', label: 'Responderam' },
+                    { k: 'lido',      label: 'Lidos' },
+                    { k: 'entregue',  label: 'Entregues' },
+                    { k: 'falha',     label: 'Falhas' },
+                  ] as { k: FiltroLead; label: string }[]).map(f => (
+                    <button key={f.k} onClick={() => setFiltroLead(f.k)}
+                      className={cn('px-3 py-1.5 text-xs rounded-md border transition-nova',
+                        filtroLead === f.k
+                          ? 'bg-[var(--btn-blue-bg)] border-[var(--btn-blue-border)] text-[var(--btn-blue-text)]'
+                          : 'border-[var(--nova-border)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text)] hover:bg-white/[0.04]',
+                      )}
+                    >{f.label}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tabela */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-[var(--nova-bg-elev-2)]">
+                      {['Nome', 'Telefone', 'Status', 'Enviado', 'Entregue', 'Lido', 'Respondeu', 'Erro'].map(h => (
+                        <th key={h} className="px-3 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)] whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--nova-border)]/50">
+                    {leadsFiltrados.slice(0, 200).map((l, i) => (
+                      <tr key={i} className={cn('hover:bg-white/[0.02]', l.respondeu_em && 'bg-amber-500/[0.03]')}>
+                        <td className="px-3 py-2 font-medium text-[var(--nova-text)] whitespace-nowrap max-w-[220px] truncate" title={l.nome}>{l.nome}</td>
+                        <td className="px-3 py-2 text-[var(--nova-text-muted)] whitespace-nowrap">
+                          <a href={`tel:+${l.whatsapp}`} className="hover:text-[var(--nova-blue)] flex items-center gap-1">
+                            <Phone size={10} />
+                            {l.whatsapp.replace(/^55/, '+55 ').replace(/(\d{2})(\d{5})(\d{4})$/, '$1 $2-$3')}
+                          </a>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap"><StatusBadge status={l.respondeu_em ? 'replied' : l.status} /></td>
+                        <td className="px-3 py-2 text-xs text-[var(--nova-text-dim)] whitespace-nowrap">{fmtHorario(l.enviado_em)}</td>
+                        <td className="px-3 py-2 text-xs text-[var(--nova-text-dim)] whitespace-nowrap">{fmtHorario(l.entregue_em)}</td>
+                        <td className="px-3 py-2 text-xs text-[var(--nova-text-dim)] whitespace-nowrap">{fmtHorario(l.lido_em)}</td>
+                        <td className="px-3 py-2 text-xs whitespace-nowrap">
+                          {l.respondeu_em
+                            ? <span className="text-amber-400 font-medium">{fmtHorario(l.respondeu_em)}</span>
+                            : <span className="text-[var(--nova-text-dim)]">—</span>}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-red-400 max-w-[160px] truncate" title={l.erro}>{l.erro || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {leadsFiltrados.length > 200 && (
+                <div className="px-4 py-2.5 border-t border-[var(--nova-border)] text-xs text-[var(--nova-text-dim)]">
+                  Exibindo 200 de {leadsFiltrados.length} leads
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Benchmark médio de todos os disparos */}
