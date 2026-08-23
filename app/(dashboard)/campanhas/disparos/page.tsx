@@ -345,6 +345,16 @@ export default function DisparosDashboardPage() {
     return matchBusca && matchFiltro
   })
 
+  // Se tem CSV carregado, calcula funil a partir dos dados reais
+  const funnelFromCSV = leads.length > 0 ? {
+    total:     leads.length,
+    enviados:  leads.filter(l => !!l.enviado_em).length,
+    entregues: leads.filter(l => !!l.entregue_em).length,
+    lidos:     leads.filter(l => !!l.lido_em).length,
+    respostas: leads.filter(l => !!l.respondeu_em).length,
+    falhas:    leads.filter(l => l.status.toLowerCase() === 'failed').length,
+  } : null
+
   const d = funnelFromCSV ?? c
 
   const kpis = [
@@ -397,16 +407,6 @@ export default function DisparosDashboardPage() {
       bg: 'bg-red-500/10',
     },
   ]
-
-  // Se tem CSV carregado, calcula funil a partir dos dados reais
-  const funnelFromCSV = leads.length > 0 ? {
-    total:     leads.length,
-    enviados:  leads.filter(l => !!l.enviado_em).length,
-    entregues: leads.filter(l => !!l.entregue_em).length,
-    lidos:     leads.filter(l => !!l.lido_em).length,
-    respostas: leads.filter(l => !!l.respondeu_em).length,
-    falhas:    leads.filter(l => l.status.toLowerCase() === 'failed').length,
-  } : null
 
   const fd = funnelFromCSV ?? c
 
