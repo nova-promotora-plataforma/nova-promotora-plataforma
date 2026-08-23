@@ -19,20 +19,33 @@ interface LeadDisparo {
   erro:         string
 }
 
+function parseCSVLine(line: string): string[] {
+  const result: string[] = []
+  let cur = '', inQ = false
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i]
+    if (c === '"') { inQ = !inQ }
+    else if (c === ',' && !inQ) { result.push(cur.trim()); cur = '' }
+    else cur += c
+  }
+  result.push(cur.trim())
+  return result
+}
+
 function parseLeadsCSV(csv: string): LeadDisparo[] {
   const lines = csv.split('\n').filter(Boolean)
   if (lines.length < 2) return []
   return lines.slice(1).map(line => {
-    const cols = line.split(',')
+    const cols = parseCSVLine(line)
     return {
-      nome:         cols[0]?.trim() ?? '',
-      whatsapp:     cols[1]?.trim() ?? '',
-      status:       cols[3]?.trim() ?? '',
-      enviado_em:   cols[4]?.trim() ?? '',
-      entregue_em:  cols[5]?.trim() ?? '',
-      lido_em:      cols[6]?.trim() ?? '',
-      respondeu_em: cols[7]?.trim() ?? '',
-      erro:         cols[8]?.trim() ?? '',
+      nome:         cols[0] ?? '',
+      whatsapp:     cols[1] ?? '',
+      status:       cols[3] ?? '',
+      enviado_em:   cols[4] ?? '',
+      entregue_em:  cols[5] ?? '',
+      lido_em:      cols[6] ?? '',
+      respondeu_em: cols[7] ?? '',
+      erro:         cols[8] ?? '',
     }
   }).filter(l => l.nome)
 }
