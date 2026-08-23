@@ -71,6 +71,7 @@ interface Campanha {
   lidos: number
   respostas: number
   falhas: number
+  sheetId?: string
 }
 
 const CAMPANHAS: Campanha[] = [
@@ -85,6 +86,7 @@ const CAMPANHAS: Campanha[] = [
     lidos: 1486,
     respostas: 301,
     falhas: 412,
+    sheetId: '12tz0NKqNUj54VWp5CH5zcrIPgbOBUelTzfCk_5mlLlI',
   },
   {
     id: 'elegiveis-sem-debito-20-50',
@@ -280,10 +282,19 @@ export default function DisparosDashboardPage() {
     setBuscaLead('')
     setFiltroLead('todos')
     try {
-      const res = await fetch(`/campanhas/${id}.csv`, { cache: 'no-store' })
-      if (res.status === 404) { setLeadsError('not_found'); return }
-      if (!res.ok)            { setLeadsError('error'); return }
-      const text = await res.text()
+      const campanha = CAMPANHAS.find(x => x.id === id)
+      let text: string
+      if (campanha?.sheetId) {
+        const url = `https://docs.google.com/spreadsheets/d/${campanha.sheetId}/gviz/tq?tqx=out:csv&sheet=Enviados`
+        const res = await fetch(url, { cache: 'no-store' })
+        if (!res.ok) { setLeadsError('error'); return }
+        text = await res.text()
+      } else {
+        const res = await fetch(`/campanhas/${id}.csv`, { cache: 'no-store' })
+        if (res.status === 404) { setLeadsError('not_found'); return }
+        if (!res.ok)            { setLeadsError('error'); return }
+        text = await res.text()
+      }
       setLeads(parseLeadsCSV(text))
     } catch {
       setLeadsError('error')
