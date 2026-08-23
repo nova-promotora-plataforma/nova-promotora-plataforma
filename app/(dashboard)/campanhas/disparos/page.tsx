@@ -307,10 +307,12 @@ export default function DisparosDashboardPage() {
     return matchBusca && matchFiltro
   })
 
+  const d = funnelFromCSV ?? c
+
   const kpis = [
     {
       label: 'Total na base',
-      value: fmtN(c.total),
+      value: fmtN(d.total),
       sub: null,
       icon: Users,
       color: 'text-[var(--nova-text)]',
@@ -318,52 +320,64 @@ export default function DisparosDashboardPage() {
     },
     {
       label: 'Enviados',
-      value: fmtN(c.enviados),
-      sub: pct(c.enviados, c.total) + ' do total',
+      value: fmtN(d.enviados),
+      sub: pct(d.enviados, d.total) + ' do total',
       icon: Send,
       color: 'text-indigo-400',
       bg: 'bg-indigo-500/10',
     },
     {
       label: 'Entregues',
-      value: fmtN(c.entregues),
-      sub: pct(c.entregues, c.enviados) + ' dos enviados',
+      value: fmtN(d.entregues),
+      sub: pct(d.entregues, d.enviados) + ' dos enviados',
       icon: CheckCheck,
       color: 'text-green-400',
       bg: 'bg-green-500/10',
     },
     {
       label: 'Lidos',
-      value: fmtN(c.lidos),
-      sub: pct(c.lidos, c.entregues) + ' dos entregues',
+      value: fmtN(d.lidos),
+      sub: pct(d.lidos, d.entregues) + ' dos entregues',
       icon: Eye,
       color: 'text-blue-400',
       bg: 'bg-blue-500/10',
     },
     {
       label: 'Respostas',
-      value: fmtN(c.respostas),
-      sub: pct(c.respostas, c.entregues) + ' dos entregues',
+      value: fmtN(d.respostas),
+      sub: pct(d.respostas, d.entregues) + ' dos entregues',
       icon: MessageSquare,
       color: 'text-amber-400',
       bg: 'bg-amber-500/10',
     },
     {
       label: 'Falhas',
-      value: fmtN(c.falhas),
-      sub: pct(c.falhas, c.total) + ' do total',
+      value: fmtN(d.falhas),
+      sub: pct(d.falhas, d.total) + ' do total',
       icon: XCircle,
       color: 'text-red-400',
       bg: 'bg-red-500/10',
     },
   ]
 
+  // Se tem CSV carregado, calcula funil a partir dos dados reais
+  const funnelFromCSV = leads.length > 0 ? {
+    total:     leads.length,
+    enviados:  leads.filter(l => !!l.enviado_em).length,
+    entregues: leads.filter(l => !!l.entregue_em).length,
+    lidos:     leads.filter(l => !!l.lido_em).length,
+    respostas: leads.filter(l => !!l.respondeu_em).length,
+    falhas:    leads.filter(l => l.status.toLowerCase() === 'failed').length,
+  } : null
+
+  const fd = funnelFromCSV ?? c
+
   const funnelData = [
-    { name: 'Total',     valor: c.total,     fill: '#6366f1' },
-    { name: 'Enviados',  valor: c.enviados,  fill: '#22c55e' },
-    { name: 'Entregues', valor: c.entregues, fill: '#3b82f6' },
-    { name: 'Lidos',     valor: c.lidos,     fill: '#f59e0b' },
-    { name: 'Respostas', valor: c.respostas, fill: '#a855f7' },
+    { name: 'Total',     valor: fd.total,     fill: '#6366f1' },
+    { name: 'Enviados',  valor: fd.enviados,  fill: '#22c55e' },
+    { name: 'Entregues', valor: fd.entregues, fill: '#3b82f6' },
+    { name: 'Lidos',     valor: fd.lidos,     fill: '#f59e0b' },
+    { name: 'Respostas', valor: fd.respostas, fill: '#a855f7' },
   ]
 
   return (
@@ -479,11 +493,11 @@ export default function DisparosDashboardPage() {
           <div className="rounded-lg border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] p-4 space-y-3">
             <p className="text-sm font-semibold text-[var(--nova-text)] mb-2">Taxas de conversão</p>
             {[
-              { label: 'Envio',     value: c.enviados,  den: c.total,     color: '#6366f1' },
-              { label: 'Entrega',   value: c.entregues, den: c.enviados,  color: '#22c55e' },
-              { label: 'Leitura',   value: c.lidos,     den: c.entregues, color: '#3b82f6' },
-              { label: 'Resposta',  value: c.respostas, den: c.entregues, color: '#f59e0b' },
-              { label: 'Falha',     value: c.falhas,    den: c.total,     color: '#ef4444' },
+              { label: 'Envio',     value: d.enviados,  den: d.total,     color: '#6366f1' },
+              { label: 'Entrega',   value: d.entregues, den: d.enviados,  color: '#22c55e' },
+              { label: 'Leitura',   value: d.lidos,     den: d.entregues, color: '#3b82f6' },
+              { label: 'Resposta',  value: d.respostas, den: d.entregues, color: '#f59e0b' },
+              { label: 'Falha',     value: d.falhas,    den: d.total,     color: '#ef4444' },
             ].map(r => {
               const p = (den: number) => den > 0 ? (r.value / den) * 100 : 0
               const perc = p(r.den)
@@ -630,12 +644,12 @@ export default function DisparosDashboardPage() {
               </thead>
               <tbody className="divide-y divide-[var(--nova-border)]/50">
                 {[
-                  { label: 'Total na base', value: c.total,     ref: '—',             taxa: '—' },
-                  { label: 'Enviados',      value: c.enviados,  ref: 'do total',       taxa: pct(c.enviados, c.total) },
-                  { label: 'Entregues',     value: c.entregues, ref: 'dos enviados',   taxa: pct(c.entregues, c.enviados) },
-                  { label: 'Lidos',         value: c.lidos,     ref: 'dos entregues',  taxa: pct(c.lidos, c.entregues) },
-                  { label: 'Respostas',     value: c.respostas, ref: 'dos entregues',  taxa: pct(c.respostas, c.entregues) },
-                  { label: 'Falhas',        value: c.falhas,    ref: 'do total',       taxa: pct(c.falhas, c.total) },
+                  { label: 'Total na base', value: d.total,     ref: '—',             taxa: '—' },
+                  { label: 'Enviados',      value: d.enviados,  ref: 'do total',       taxa: pct(d.enviados, d.total) },
+                  { label: 'Entregues',     value: d.entregues, ref: 'dos enviados',   taxa: pct(d.entregues, d.enviados) },
+                  { label: 'Lidos',         value: d.lidos,     ref: 'dos entregues',  taxa: pct(d.lidos, d.entregues) },
+                  { label: 'Respostas',     value: d.respostas, ref: 'dos entregues',  taxa: pct(d.respostas, d.entregues) },
+                  { label: 'Falhas',        value: d.falhas,    ref: 'do total',       taxa: pct(d.falhas, d.total) },
                 ].map(row => (
                   <tr key={row.label} className="hover:bg-white/[0.02]">
                     <td className="px-4 py-2.5 font-medium text-[var(--nova-text)]">{row.label}</td>
