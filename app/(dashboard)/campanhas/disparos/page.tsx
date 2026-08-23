@@ -466,7 +466,7 @@ export default function DisparosDashboardPage() {
                     fontSize: 12,
                   }}
                 />
-                <Bar dataKey="valor" radius={[0, 4, 4, 0]}>
+                <Bar dataKey="valor" radius={[0, 4, 4, 0]} label={{ position: 'insideRight', formatter: (v: number) => fmtN(v), fill: '#fff', fontSize: 11, fontWeight: 600, dx: -8 }}>
                   {funnelData.map((entry, i) => (
                     <Cell key={i} fill={entry.fill} />
                   ))}
