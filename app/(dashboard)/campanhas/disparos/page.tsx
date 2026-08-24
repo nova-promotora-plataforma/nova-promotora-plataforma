@@ -235,6 +235,18 @@ const CAMPANHAS: Campanha[] = [
     respostas: 6,
     falhas: 23,
   },
+  {
+    id: 'elegiveis-sem-debito-3a-20-50',
+    nome: 'Elegíveis Sem Débito 3 anos – R$20-50k',
+    data: '24/08/2026',
+    status: 'Concluída',
+    total: 114,
+    enviados: 78,
+    entregues: 73,
+    lidos: 13,
+    respostas: 6,
+    falhas: 36,
+  },
 ]
 
 const pct = (num: number, den: number) =>
