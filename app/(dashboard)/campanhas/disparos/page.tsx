@@ -631,7 +631,7 @@ export default function DisparosDashboardPage() {
         </div>
 
         {/* Produção dos parceiros */}
-        {(producaoData || producaoLoading) && (() => {
+        {(producaoData || producaoLoading) && c.codesSheetId && (() => {
           const ag = producaoData?.agregado
           const meses = producaoData?.meses ?? []
           const total = ag?.total
