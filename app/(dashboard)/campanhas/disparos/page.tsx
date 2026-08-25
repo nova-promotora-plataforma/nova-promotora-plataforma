@@ -263,6 +263,7 @@ const CAMPANHAS: Campanha[] = [
     lidos: 13,
     respostas: 6,
     falhas: 36,
+    sheetId: '1JgR5RLWICSeOyarkBZxoNaJ5YdO6YtOo0s-WX8QNPGM',
     codesSheetId: '1fsyOKpssoI7NW5lSmxCHgljyR88J7cvfoQBMlkCjA8Y',
   },
   {
