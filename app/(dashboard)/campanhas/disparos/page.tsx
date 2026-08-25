@@ -47,6 +47,7 @@ function parseLeadsCSV(csv: string): LeadDisparo[] {
       lido_em:      cols[6] ?? '',
       respondeu_em: cols[7] ?? '',
       erro:         cols[8] ?? '',
+      codigo:       '',
     }
   }).filter(l => l.nome)
 }
