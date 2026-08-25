@@ -124,7 +124,11 @@ export async function GET(req: NextRequest) {
       agregado[tab] = buildAgregado(tabsRaw[i], leadCodes)
     })
 
-    return NextResponse.json({ porLead, agregado, meses: MONTHS })
+    // Build phone → codigo map for export
+    const porCodigo: Record<string, string> = {}
+    phoneToCode.forEach((cod, phone) => { porCodigo[phone] = cod })
+
+    return NextResponse.json({ porLead, agregado, meses: MONTHS, porCodigo })
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }

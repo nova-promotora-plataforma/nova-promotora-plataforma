@@ -17,6 +17,7 @@ interface LeadDisparo {
   lido_em:      string
   respondeu_em: string
   erro:         string
+  codigo:       string
 }
 
 function parseCSVLine(line: string): string[] {
@@ -104,9 +105,10 @@ interface ProducaoAgregado {
 }
 
 interface ProducaoData {
-  porLead:  Record<string, ProducaoLead>
-  agregado: Record<string, ProducaoAgregado>
-  meses:    string[]
+  porLead:   Record<string, ProducaoLead>
+  agregado:  Record<string, ProducaoAgregado>
+  meses:     string[]
+  porCodigo: Record<string, string>
 }
 
 const CAMPANHAS: Campanha[] = [
@@ -800,14 +802,15 @@ export default function DisparosDashboardPage() {
                 <button
                   onClick={() => {
                     const temProd = Object.keys(producaoData?.porLead ?? {}).length > 0
-                    const headers = ['Nome','Telefone','Status','Enviado','Entregue','Lido','Respondeu','Erro',
+                    const headers = ['Codigo','Nome','Telefone','Status','Enviado','Entregue','Lido','Respondeu','Erro',
                       ...(temProd ? ['Prod Pre (R$)','Prod Pos (R$)','Variacao (%)'] : [])]
                     const rows = leadsFiltrados.map(l => {
                       const phone = l.whatsapp.replace(/^55/, '')
                       const prod = producaoData?.porLead[phone]
+                      const codigo = producaoData?.porCodigo[phone] ?? ''
                       const variacao = prod && prod.pre > 0 ? ((prod.pos - prod.pre) / prod.pre * 100).toFixed(1) : ''
                       return [
-                        l.nome, l.whatsapp, l.respondeu_em ? 'Respondeu' : l.status,
+                        codigo, l.nome, l.whatsapp, l.respondeu_em ? 'Respondeu' : l.status,
                         l.enviado_em, l.entregue_em, l.lido_em, l.respondeu_em, l.erro,
                         ...(temProd ? [prod?.pre?.toFixed(2) ?? '', prod?.pos?.toFixed(2) ?? '', variacao] : [])
                       ].map(v => `"${(v || '').replace(/"/g, '""')}"`).join(',')
