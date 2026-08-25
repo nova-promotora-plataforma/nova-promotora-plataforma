@@ -177,6 +177,7 @@ const CAMPANHAS: Campanha[] = [
     lidos: 15,
     respostas: 4,
     falhas: 25,
+    sheetId: '1KZ4XV2Gr3awhYEiIB7toGxFeoTckwVlxGCKO-5diz2k',
   },
   {
     id: 'elegiveis-sem-debito-2a-20-50',
