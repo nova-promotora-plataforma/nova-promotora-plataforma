@@ -793,9 +793,37 @@ export default function DisparosDashboardPage() {
               <p className="text-xs text-[var(--nova-text-dim)] mt-0.5">Resultado individual por contato</p>
             </div>
             {leads.length > 0 && (
-              <span className="text-[0.625rem] font-medium text-[var(--nova-text-dim)] bg-[var(--nova-bg-elev-2)] px-2 py-1 rounded">
-                {leadsFiltrados.length} de {leads.length} leads
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[0.625rem] font-medium text-[var(--nova-text-dim)] bg-[var(--nova-bg-elev-2)] px-2 py-1 rounded">
+                  {leadsFiltrados.length} de {leads.length} leads
+                </span>
+                <button
+                  onClick={() => {
+                    const temProd = Object.keys(producaoData?.porLead ?? {}).length > 0
+                    const headers = ['Nome','Telefone','Status','Enviado','Entregue','Lido','Respondeu','Erro',
+                      ...(temProd ? ['Prod Pre (R$)','Prod Pos (R$)','Variacao (%)'] : [])]
+                    const rows = leadsFiltrados.map(l => {
+                      const phone = l.whatsapp.replace(/^55/, '')
+                      const prod = producaoData?.porLead[phone]
+                      const variacao = prod && prod.pre > 0 ? ((prod.pos - prod.pre) / prod.pre * 100).toFixed(1) : ''
+                      return [
+                        l.nome, l.whatsapp, l.respondeu_em ? 'Respondeu' : l.status,
+                        l.enviado_em, l.entregue_em, l.lido_em, l.respondeu_em, l.erro,
+                        ...(temProd ? [prod?.pre?.toFixed(2) ?? '', prod?.pos?.toFixed(2) ?? '', variacao] : [])
+                      ].map(v => `"${(v || '').replace(/"/g, '""')}"`).join(',')
+                    })
+                    const csv = [headers.join(','), ...rows].join('\n')
+                    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+                    const a = document.createElement('a')
+                    a.href = URL.createObjectURL(blob)
+                    a.download = `${c.id}_leads.csv`
+                    a.click()
+                  }}
+                  className="flex items-center gap-1.5 text-[0.625rem] font-medium px-2 py-1 rounded border border-[var(--nova-border)] text-[var(--nova-text-dim)] hover:text-[var(--nova-text)] hover:bg-[var(--nova-bg-elev-2)] transition-nova"
+                >
+                  ↓ Exportar CSV
+                </button>
+              </div>
             )}
           </div>
 
