@@ -230,6 +230,7 @@ const CAMPANHAS: Campanha[] = [
     lidos: 25,
     respostas: 18,
     falhas: 49,
+    sheetId: '1X-uTKsVcv2o6vL_2chqDUr69oFLNG0421smgK3s3HFQ',
   },
   {
     id: 'elegiveis-sem-debito-100-200',
