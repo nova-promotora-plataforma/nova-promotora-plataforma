@@ -881,6 +881,9 @@ export default function DisparosDashboardPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-[var(--nova-bg-elev-2)]">
+                      {Object.keys(producaoData?.porCodigo ?? {}).length > 0 && (
+                        <th className="px-3 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)] whitespace-nowrap">Código</th>
+                      )}
                       {([
                         { label: 'Nome',      col: 'nome' },
                         { label: 'Telefone',  col: null },
@@ -929,6 +932,11 @@ export default function DisparosDashboardPage() {
                         : null
                       return (
                       <tr key={i} className={cn('hover:bg-white/[0.02]', l.respondeu_em && 'bg-amber-500/[0.03]')}>
+                        {Object.keys(producaoData?.porCodigo ?? {}).length > 0 && (
+                          <td className="px-3 py-2 text-xs text-[var(--nova-text-dim)] whitespace-nowrap font-mono">
+                            {producaoData?.porCodigo[phone] ?? '—'}
+                          </td>
+                        )}
                         <td className="px-3 py-2 font-medium text-[var(--nova-text)] whitespace-nowrap max-w-[220px] truncate" title={l.nome}>{l.nome}</td>
                         <td className="px-3 py-2 text-[var(--nova-text-muted)] whitespace-nowrap">
                           <a href={`tel:+${l.whatsapp}`} className="hover:text-[var(--nova-blue)] flex items-center gap-1">
