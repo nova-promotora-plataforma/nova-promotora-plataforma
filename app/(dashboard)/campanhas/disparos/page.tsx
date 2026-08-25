@@ -36,7 +36,7 @@ function parseCSVLine(line: string): string[] {
 function parseLeadsCSV(csv: string): LeadDisparo[] {
   const lines = csv.split('\n').filter(Boolean)
   if (lines.length < 2) return []
-  return lines.slice(1).map(line => {
+  return lines.slice(1).map((line): LeadDisparo => {
     const cols = parseCSVLine(line)
     return {
       nome:         cols[0] ?? '',
