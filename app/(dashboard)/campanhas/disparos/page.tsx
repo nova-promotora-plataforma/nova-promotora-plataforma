@@ -377,12 +377,15 @@ export default function DisparosDashboardPage() {
       }
       setLeads(parseLeadsCSV(text))
 
-      if (campanha?.codesSheetId && campanha?.producaoSheetId) {
+      if (campanha?.codesSheetId) {
         setProducaoLoading(true)
         try {
           const tabs = campanha.producaoTabs?.join(',') ?? ''
+          const prodParam = campanha.producaoSheetId
+            ? `&producaoSheetId=${campanha.producaoSheetId}&tabs=${tabs}`
+            : ''
           const pRes = await fetch(
-            `/api/producao-leads?codesSheetId=${campanha.codesSheetId}&producaoSheetId=${campanha.producaoSheetId}&tabs=${tabs}`,
+            `/api/producao-leads?codesSheetId=${campanha.codesSheetId}${prodParam}`,
             { cache: 'no-store' },
           )
           if (pRes.ok) setProducaoData(await pRes.json())

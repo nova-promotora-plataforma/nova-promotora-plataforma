@@ -57,8 +57,8 @@ export async function GET(req: NextRequest) {
   const producaoSheetId = searchParams.get('producaoSheetId')
   const tabsParam      = searchParams.get('tabs') // comma-separated, e.g. "INSS,FGTS"
 
-  if (!codesSheetId || !producaoSheetId) {
-    return NextResponse.json({ error: 'codesSheetId and producaoSheetId required' }, { status: 400 })
+  if (!codesSheetId) {
+    return NextResponse.json({ error: 'codesSheetId required' }, { status: 400 })
   }
 
   const tabs = tabsParam ? tabsParam.split(',').map(t => t.trim()).filter(Boolean) : []
@@ -83,6 +83,15 @@ export async function GET(req: NextRequest) {
     })
 
     const leadCodes = new Set(phoneToCode.values())
+
+    // Build phone → codigo map for export
+    const porCodigo: Record<string, string> = {}
+    phoneToCode.forEach((cod, phone) => { porCodigo[phone] = cod })
+
+    // If no producaoSheetId, return only codes
+    if (!producaoSheetId) {
+      return NextResponse.json({ porLead: {}, agregado: {}, meses: MONTHS, porCodigo })
+    }
 
     // Fetch total + product tabs in parallel
     const [prodRaw, ...tabsRaw] = await Promise.all([
@@ -123,10 +132,6 @@ export async function GET(req: NextRequest) {
     tabs.forEach((tab, i) => {
       agregado[tab] = buildAgregado(tabsRaw[i], leadCodes)
     })
-
-    // Build phone → codigo map for export
-    const porCodigo: Record<string, string> = {}
-    phoneToCode.forEach((cod, phone) => { porCodigo[phone] = cod })
 
     return NextResponse.json({ porLead, agregado, meses: MONTHS, porCodigo })
   } catch (e) {
