@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Users, Megaphone, RefreshCw,
-  Settings, ChevronLeft, ChevronRight, Building2, Layers, Send, UserCheck, BarChart2, GitMerge, MapPin,
+  Settings, ChevronLeft, ChevronRight, Building2, Layers, Send, UserCheck, BarChart2, GitMerge, MapPin, Radar,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -21,6 +21,9 @@ const NAV = [
   ]},
   { label: 'Leads', items: [
     { href: '/leads/nexxo', icon: GitMerge, label: 'Nexxo × Parceiros' },
+  ]},
+  { label: 'Prospecção', items: [
+    { href: '/possiveis-parceiros', icon: Radar, label: 'Possíveis Parceiros' },
   ]},
   { label: 'Campanhas de Disparo', items: [
     { href: '/campanhas/disparos', icon: BarChart2, label: 'Resultados dos disparos' },
