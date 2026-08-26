@@ -189,35 +189,6 @@ export default function PossiveisParceirosPage() {
           </div>
         )}
 
-        {/* Dados por estado */}
-        {porUf.length > 0 && (
-          <div className="rounded-md border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] overflow-hidden mb-4">
-            <p className="text-sm font-semibold text-[var(--nova-text)] px-4 pt-4 pb-2">Dados por estado</p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm table-zebra" aria-label="Possíveis parceiros por estado">
-                <thead>
-                  <tr className="bg-[var(--nova-bg-elev-2)]">
-                    <th className="px-4 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">UF</th>
-                    <th className="px-4 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">Já parceiros</th>
-                    <th className="px-4 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">Só novos</th>
-                    <th className="px-4 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--nova-border)]/50">
-                  {porUf.map(u => (
-                    <tr key={u.uf} className="hover:bg-white/[0.02] transition-nova">
-                      <td className="px-4 py-2 font-medium text-[var(--nova-text)]">{u.uf}</td>
-                      <td className="px-4 py-2 text-[var(--nova-text-muted)]">{u.jaParceiro.toLocaleString('pt-BR')}</td>
-                      <td className="px-4 py-2 text-[var(--nova-text-muted)]">{u.novos.toLocaleString('pt-BR')}</td>
-                      <td className="px-4 py-2 text-[var(--nova-text)] font-medium">{u.total.toLocaleString('pt-BR')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
         {/* Filtros */}
         <div className="flex flex-wrap gap-2 mb-4" role="search" aria-label="Filtros de possíveis parceiros">
           <input
