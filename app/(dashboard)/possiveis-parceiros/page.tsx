@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { TopBar } from '@/components/layout/TopBar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { KPICard } from '@/components/ui/KPICard'
 import { ChevronLeft, ChevronRight, Filter, Loader2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -26,11 +27,18 @@ interface PossiblePartner {
   raizNaCarteira: boolean
 }
 
+interface Stats {
+  total: number
+  jaParceiro: number
+  novos: number
+}
+
 interface ApiResponse {
   data: PossiblePartner[]
   total: number
   page: number
   pages: number
+  stats: Stats
 }
 
 const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO']
@@ -46,6 +54,7 @@ export default function PossiveisParceirosPage() {
   const [pages, setPages]     = useState(1)
   const [page, setPage]       = useState(1)
   const [loading, setLoading] = useState(true)
+  const [stats, setStats]     = useState<Stats | null>(null)
 
   // filtros
   const [busca, setBusca]           = useState('')
@@ -88,6 +97,7 @@ export default function PossiveisParceirosPage() {
       setTotal(json.total)
       setPages(json.pages)
       setPage(json.page)
+      setStats(json.stats)
     } catch {
       setData([])
     } finally {
@@ -122,6 +132,34 @@ export default function PossiveisParceirosPage() {
       <TopBar title="Possíveis Parceiros" />
 
       <main className="flex-1 overflow-auto p-5">
+
+        {/* KPIs */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+          {stats ? (
+            <>
+              <KPICard
+                label="Já são parceiros"
+                value={stats.jaParceiro.toLocaleString('pt-BR')}
+                sub={`${((stats.jaParceiro / stats.total) * 100).toFixed(1)}% da base`}
+              />
+              <KPICard
+                label="Só novos prospects"
+                value={stats.novos.toLocaleString('pt-BR')}
+                sub={`${((stats.novos / stats.total) * 100).toFixed(1)}% da base`}
+              />
+              <KPICard
+                label="Total da base"
+                value={stats.total.toLocaleString('pt-BR')}
+              />
+            </>
+          ) : (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="rounded-md border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] p-4 h-24 flex items-center justify-center">
+                <Loader2 size={18} className="animate-spin text-[var(--nova-text-dim)]" />
+              </div>
+            ))
+          )}
+        </div>
 
         {/* Filtros */}
         <div className="flex flex-wrap gap-2 mb-4" role="search" aria-label="Filtros de possíveis parceiros">

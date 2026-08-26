@@ -15,6 +15,12 @@ export async function GET(req: NextRequest) {
 
   const all = await fetchPossiblePartners()
 
+  const stats = {
+    total:      all.length,
+    jaParceiro: all.filter(p => p.jaParceiro).length,
+    novos:      all.filter(p => !p.jaParceiro).length,
+  }
+
   const filtered = all.filter(p => {
     if (busca &&
         !p.razaoSocial.toLowerCase().includes(busca) &&
@@ -43,5 +49,5 @@ export async function GET(req: NextRequest) {
     ...p,
   }))
 
-  return NextResponse.json({ data: slice, total, page, pages, sortBy, sortDir })
+  return NextResponse.json({ data: slice, total, page, pages, sortBy, sortDir, stats })
 }
