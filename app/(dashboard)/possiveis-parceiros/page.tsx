@@ -5,6 +5,7 @@ import { TopBar } from '@/components/layout/TopBar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { KPICard } from '@/components/ui/KPICard'
+import { BarChart } from '@/components/charts/BarChart'
 import { ChevronLeft, ChevronRight, Filter, Loader2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -33,12 +34,15 @@ interface Stats {
   novos: number
 }
 
+interface UfCount { label: string; value: number }
+
 interface ApiResponse {
   data: PossiblePartner[]
   total: number
   page: number
   pages: number
   stats: Stats
+  novosPorUf: UfCount[]
 }
 
 const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO']
@@ -55,6 +59,7 @@ export default function PossiveisParceirosPage() {
   const [page, setPage]       = useState(1)
   const [loading, setLoading] = useState(true)
   const [stats, setStats]     = useState<Stats | null>(null)
+  const [novosPorUf, setNovosPorUf] = useState<UfCount[]>([])
 
   // filtros
   const [busca, setBusca]           = useState('')
@@ -98,6 +103,7 @@ export default function PossiveisParceirosPage() {
       setPages(json.pages)
       setPage(json.page)
       setStats(json.stats)
+      setNovosPorUf(json.novosPorUf)
     } catch {
       setData([])
     } finally {
@@ -160,6 +166,13 @@ export default function PossiveisParceirosPage() {
             ))
           )}
         </div>
+
+        {/* Novos prospects por UF */}
+        {novosPorUf.length > 0 && (
+          <div className="mb-4">
+            <BarChart data={novosPorUf} title="Novos prospects por UF" height={520} />
+          </div>
+        )}
 
         {/* Filtros */}
         <div className="flex flex-wrap gap-2 mb-4" role="search" aria-label="Filtros de possíveis parceiros">

@@ -3,6 +3,8 @@ import { fetchPossiblePartners } from '@/lib/sheets/possiveis-parceiros'
 
 const PAGE_SIZE = 20
 
+const VALID_UFS = new Set(['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'])
+
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const page       = Math.max(1, parseInt(searchParams.get('page') ?? '1'))
@@ -20,6 +22,14 @@ export async function GET(req: NextRequest) {
     jaParceiro: all.filter(p => p.jaParceiro).length,
     novos:      all.filter(p => !p.jaParceiro).length,
   }
+
+  const novosPorUfMap = new Map<string, number>()
+  for (const p of all) {
+    if (p.jaParceiro || !p.uf || !VALID_UFS.has(p.uf)) continue
+    novosPorUfMap.set(p.uf, (novosPorUfMap.get(p.uf) ?? 0) + 1)
+  }
+  const novosPorUf = Array.from(novosPorUfMap, ([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value)
 
   const filtered = all.filter(p => {
     if (busca &&
@@ -49,5 +59,5 @@ export async function GET(req: NextRequest) {
     ...p,
   }))
 
-  return NextResponse.json({ data: slice, total, page, pages, sortBy, sortDir, stats })
+  return NextResponse.json({ data: slice, total, page, pages, sortBy, sortDir, stats, novosPorUf })
 }

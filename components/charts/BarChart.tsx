@@ -12,13 +12,14 @@ interface DataPoint { label: string; value: number }
 interface BarChartProps {
   data: DataPoint[]
   title: string
+  height?: number
 }
 
-export function BarChart({ data, title }: BarChartProps) {
+export function BarChart({ data, title, height = 160 }: BarChartProps) {
   return (
     <div className="rounded-md border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] p-4">
       <p className="text-sm font-semibold text-[var(--nova-text)] mb-4">{title}</p>
-      <ResponsiveContainer width="100%" height={160}>
+      <ResponsiveContainer width="100%" height={height}>
         <RechartsBarChart data={data} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="rgba(34,48,74,0.6)" strokeDasharray="3 3" horizontal={false} />
           <XAxis
@@ -35,6 +36,7 @@ export function BarChart({ data, title }: BarChartProps) {
             axisLine={false}
             tickLine={false}
             width={32}
+            interval={0}
           />
           <Tooltip
             contentStyle={{
