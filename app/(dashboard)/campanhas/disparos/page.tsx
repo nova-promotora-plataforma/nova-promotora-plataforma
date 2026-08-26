@@ -280,6 +280,18 @@ const CAMPANHAS: Campanha[] = [
     sheetId: '1AiJv6edXwot7G6cyYgRvlq-J_lKiU7RLlMcbj1Sx0VY',
     codesSheetId: '1WOKvIbj_6aJh4lHSKgG4HZzck9x4QA16wwcq4wQQCTE',
   },
+  {
+    id: 'elegiveis-sem-debito-3a-100-200',
+    nome: 'Elegíveis Sem Débito 3 anos – R$100-200k',
+    data: '26/08/2026',
+    status: 'Concluída',
+    total: 11,
+    enviados: 5,
+    entregues: 5,
+    lidos: 0,
+    respostas: 1,
+    falhas: 6,
+  },
 ]
 
 const pct = (num: number, den: number) =>
