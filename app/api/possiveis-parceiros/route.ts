@@ -34,6 +34,14 @@ export async function GET(req: NextRequest) {
   const porUf = Array.from(ufMap, ([uf, c]) => ({ uf, jaParceiro: c.jaParceiro, novos: c.novos, total: c.jaParceiro + c.novos }))
     .sort((a, b) => b.total - a.total)
 
+  const cnaeMap = new Map<string, number>()
+  for (const p of all) {
+    if (p.jaParceiro) continue
+    const label = p.cnaeDesc && p.cnaeDesc !== '(secundária)' ? p.cnaeDesc : 'CNAE secundário (não informado)'
+    cnaeMap.set(label, (cnaeMap.get(label) ?? 0) + 1)
+  }
+  const porCnae = Array.from(cnaeMap, ([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value)
+
   const filtered = all.filter(p => {
     if (busca &&
         !p.razaoSocial.toLowerCase().includes(busca) &&
@@ -62,5 +70,5 @@ export async function GET(req: NextRequest) {
     ...p,
   }))
 
-  return NextResponse.json({ data: slice, total, page, pages, sortBy, sortDir, stats, porUf })
+  return NextResponse.json({ data: slice, total, page, pages, sortBy, sortDir, stats, porUf, porCnae })
 }

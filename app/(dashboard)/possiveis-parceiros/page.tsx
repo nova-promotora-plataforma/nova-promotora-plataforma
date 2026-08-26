@@ -41,6 +41,8 @@ interface UfBreakdown {
   total: number
 }
 
+interface CnaeCount { label: string; value: number }
+
 interface ApiResponse {
   data: PossiblePartner[]
   total: number
@@ -48,6 +50,7 @@ interface ApiResponse {
   pages: number
   stats: Stats
   porUf: UfBreakdown[]
+  porCnae: CnaeCount[]
 }
 
 const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO']
@@ -65,6 +68,7 @@ export default function PossiveisParceirosPage() {
   const [loading, setLoading] = useState(true)
   const [stats, setStats]     = useState<Stats | null>(null)
   const [porUf, setPorUf] = useState<UfBreakdown[]>([])
+  const [porCnae, setPorCnae] = useState<CnaeCount[]>([])
 
   // filtros
   const [busca, setBusca]           = useState('')
@@ -109,6 +113,7 @@ export default function PossiveisParceirosPage() {
       setPage(json.page)
       setStats(json.stats)
       setPorUf(json.porUf)
+      setPorCnae(json.porCnae)
     } catch {
       setData([])
     } finally {
@@ -132,6 +137,12 @@ export default function PossiveisParceirosPage() {
       color: `hsl(${Math.round((i * 360) / porNovos.length)}, 65%, 58%)`,
     }))
   })()
+
+  const cnaeDonutData = porCnae.map((c, i) => ({
+    label: c.label,
+    value: c.value,
+    color: `hsl(${Math.round((i * 360) / porCnae.length)}, 65%, 58%)`,
+  }))
 
   const pageNumbers = () => {
     const nums: (number | '...')[] = []
@@ -185,6 +196,19 @@ export default function PossiveisParceirosPage() {
         {donutData.length > 0 && (
           <div className="mb-4">
             <DonutChart data={donutData} title="Novos prospects por estado" centerLabel="Novos" />
+          </div>
+        )}
+
+        {/* Distribuição por CNAE */}
+        {cnaeDonutData.length > 0 && (
+          <div className="mb-4">
+            <DonutChart
+              data={cnaeDonutData}
+              title="Novos prospects por CNAE"
+              centerLabel="Novos"
+              rowsPerColumn={11}
+              labelWidth={280}
+            />
           </div>
         )}
 

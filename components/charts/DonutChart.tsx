@@ -9,11 +9,13 @@ interface DonutChartProps {
   data: DonutSlice[]
   title: string
   centerLabel?: string
+  rowsPerColumn?: number
+  labelWidth?: number
 }
 
-export function DonutChart({ data, title, centerLabel = 'Total' }: DonutChartProps) {
+export function DonutChart({ data, title, centerLabel = 'Total', rowsPerColumn = 5, labelWidth = 40 }: DonutChartProps) {
   const total = data.reduce((sum, d) => sum + d.value, 0)
-  const ROWS = 5
+  const ROWS = rowsPerColumn
   const numCols = Math.ceil(data.length / ROWS)
   // colunas de conteúdo em trilhas ímpares, colunas-traço (1px) em trilhas pares
   const gridTemplateColumns = Array.from({ length: numCols }, (_, i) => (i > 0 ? '1px auto' : 'auto')).join(' ')
@@ -60,7 +62,13 @@ export function DonutChart({ data, title, centerLabel = 'Total' }: DonutChartPro
                 className="flex items-center gap-2.5"
               >
                 <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: d.color }} aria-hidden />
-                <span className="text-sm text-[var(--nova-text)] font-medium flex-shrink-0 w-10">{d.label}</span>
+                <span
+                  className="text-sm text-[var(--nova-text)] font-medium flex-shrink-0 truncate"
+                  style={{ width: labelWidth }}
+                  title={d.label}
+                >
+                  {d.label}
+                </span>
                 <span className="text-sm text-[var(--nova-text-muted)] w-16 text-right">{formatNumber(d.value)}</span>
                 <span className="text-xs text-[var(--nova-text-dim)] w-12 text-right">
                   {total > 0 ? ((d.value / total) * 100).toFixed(1) : '0.0'}%
