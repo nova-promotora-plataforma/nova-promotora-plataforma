@@ -1,7 +1,7 @@
 'use client'
 
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
-import { formatNumber, cn } from '@/lib/utils'
+import { formatNumber } from '@/lib/utils'
 
 interface DonutSlice { label: string; value: number; color: string }
 
@@ -11,15 +11,12 @@ interface DonutChartProps {
   centerLabel?: string
 }
 
-function chunk<T>(arr: T[], size: number): T[][] {
-  const out: T[][] = []
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
-  return out
-}
-
 export function DonutChart({ data, title, centerLabel = 'Total' }: DonutChartProps) {
   const total = data.reduce((sum, d) => sum + d.value, 0)
-  const columns = chunk(data, 5)
+  const ROWS = 5
+  const numCols = Math.ceil(data.length / ROWS)
+  // colunas de conteúdo em trilhas ímpares, colunas-traço (1px) em trilhas pares
+  const gridTemplateColumns = Array.from({ length: numCols }, (_, i) => (i > 0 ? '1px auto' : 'auto')).join(' ')
 
   return (
     <div className="rounded-md border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] p-4">
@@ -49,26 +46,35 @@ export function DonutChart({ data, title, centerLabel = 'Total' }: DonutChartPro
           </div>
         </div>
 
-        <div className="w-full sm:w-auto flex flex-wrap">
-          {columns.map((col, ci) => (
+        <div
+          className="w-full sm:w-auto grid gap-x-6 gap-y-2"
+          style={{ gridTemplateColumns, gridTemplateRows: `repeat(${ROWS}, auto)` }}
+        >
+          {data.map((d, i) => {
+            const col = Math.floor(i / ROWS)
+            const row = i % ROWS
+            return (
+              <div
+                key={d.label}
+                style={{ gridColumn: col * 2 + 1, gridRow: row + 1 }}
+                className="flex items-center gap-2.5"
+              >
+                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: d.color }} aria-hidden />
+                <span className="text-sm text-[var(--nova-text)] font-medium flex-shrink-0 w-10">{d.label}</span>
+                <span className="text-sm text-[var(--nova-text-muted)] w-16 text-right">{formatNumber(d.value)}</span>
+                <span className="text-xs text-[var(--nova-text-dim)] w-12 text-right">
+                  {total > 0 ? ((d.value / total) * 100).toFixed(1) : '0.0'}%
+                </span>
+              </div>
+            )
+          })}
+          {Array.from({ length: numCols - 1 }, (_, ci) => (
             <div
-              key={ci}
-              className={cn(
-                'flex flex-col gap-2 pr-6',
-                ci > 0 && 'pl-6 border-l border-[var(--nova-border)]',
-              )}
-            >
-              {col.map(d => (
-                <div key={d.label} className="flex items-center gap-2.5">
-                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: d.color }} aria-hidden />
-                  <span className="text-sm text-[var(--nova-text)] font-medium flex-shrink-0 w-10">{d.label}</span>
-                  <span className="text-sm text-[var(--nova-text-muted)] w-16 text-right">{formatNumber(d.value)}</span>
-                  <span className="text-xs text-[var(--nova-text-dim)] w-12 text-right">
-                    {total > 0 ? ((d.value / total) * 100).toFixed(1) : '0.0'}%
-                  </span>
-                </div>
-              ))}
-            </div>
+              key={`divider-${ci}`}
+              style={{ gridColumn: (ci + 1) * 2, gridRow: `1 / ${ROWS + 1}` }}
+              className="w-px bg-[var(--nova-border)]"
+              aria-hidden
+            />
           ))}
         </div>
       </div>
