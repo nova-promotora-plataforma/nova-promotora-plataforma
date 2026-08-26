@@ -42,12 +42,12 @@ export function DonutChart({ data, title, centerLabel = 'Total' }: DonutChartPro
           </div>
         </div>
 
-        <div className="flex-1 w-full flex flex-col gap-2.5">
+        <div className="w-full sm:w-auto flex flex-col gap-2.5">
           {data.map(d => (
             <div key={d.label} className="flex items-center gap-2.5">
               <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: d.color }} aria-hidden />
               <span className="text-sm text-[var(--nova-text)] font-medium flex-shrink-0 w-10">{d.label}</span>
-              <span className="text-sm text-[var(--nova-text-muted)] flex-1 text-right">{formatNumber(d.value)}</span>
+              <span className="text-sm text-[var(--nova-text-muted)] w-16 text-right">{formatNumber(d.value)}</span>
               <span className="text-xs text-[var(--nova-text-dim)] w-12 text-right">
                 {total > 0 ? ((d.value / total) * 100).toFixed(1) : '0.0'}%
               </span>
