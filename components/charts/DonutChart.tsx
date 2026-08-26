@@ -42,7 +42,7 @@ export function DonutChart({ data, title, centerLabel = 'Total' }: DonutChartPro
           </div>
         </div>
 
-        <div className="w-full sm:w-auto flex flex-col gap-2.5">
+        <div className="w-full sm:w-auto grid grid-flow-col grid-rows-5 gap-x-6 gap-y-2">
           {data.map(d => (
             <div key={d.label} className="flex items-center gap-2.5">
               <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: d.color }} aria-hidden />
