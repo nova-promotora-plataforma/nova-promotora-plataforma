@@ -291,6 +291,7 @@ const CAMPANHAS: Campanha[] = [
     lidos: 0,
     respostas: 1,
     falhas: 6,
+    sheetId: '1Lagif8zuyqPkvYXJyzT1cm8gekJZMCELNa1snERzyQ8',
   },
 ]
 
