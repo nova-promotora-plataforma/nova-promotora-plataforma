@@ -126,9 +126,10 @@ export default function PossiveisParceirosPage() {
 
   const DONUT_COLORS = ['#3D7BFF', '#34D399', '#F59E0B', '#EF4444', '#A78BFA', '#22D3EE', '#F472B6', '#84CC16', '#5D6880']
   const donutData = (() => {
-    const top = porUf.slice(0, 8)
-    const outros = porUf.slice(8).reduce((sum, u) => sum + u.total, 0)
-    const slices = top.map((u, i) => ({ label: u.uf, value: u.total, color: DONUT_COLORS[i] }))
+    const porNovos = [...porUf].sort((a, b) => b.novos - a.novos)
+    const top = porNovos.slice(0, 8)
+    const outros = porNovos.slice(8).reduce((sum, u) => sum + u.novos, 0)
+    const slices = top.map((u, i) => ({ label: u.uf, value: u.novos, color: DONUT_COLORS[i] }))
     if (outros > 0) slices.push({ label: 'Outros', value: outros, color: DONUT_COLORS[8] })
     return slices
   })()
@@ -184,7 +185,7 @@ export default function PossiveisParceirosPage() {
         {/* Distribuição por estado */}
         {donutData.length > 0 && (
           <div className="mb-4">
-            <DonutChart data={donutData} title="Distribuição por estado" />
+            <DonutChart data={donutData} title="Novos prospects por estado" centerLabel="Novos" />
           </div>
         )}
 

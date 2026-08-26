@@ -1,6 +1,6 @@
 'use client'
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { formatNumber } from '@/lib/utils'
 
 interface DonutSlice { label: string; value: number; color: string }
@@ -8,68 +8,52 @@ interface DonutSlice { label: string; value: number; color: string }
 interface DonutChartProps {
   data: DonutSlice[]
   title: string
+  centerLabel?: string
 }
 
-function renderLabel({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) {
-  const RADIAN = Math.PI / 180
-  const radius = innerRadius + (outerRadius - innerRadius) * 1.35
-  const x = cx + radius * Math.cos(-midAngle * RADIAN)
-  const y = cy + radius * Math.sin(-midAngle * RADIAN)
-  if (percent < 0.02) return null
-  return (
-    <text
-      x={x} y={y}
-      fill="#9AA6BA"
-      fontSize={11}
-      fontFamily="var(--font-sora)"
-      textAnchor={x > cx ? 'start' : 'end'}
-      dominantBaseline="central"
-    >
-      {`${(percent * 100).toFixed(0)}%`}
-    </text>
-  )
-}
+export function DonutChart({ data, title, centerLabel = 'Total' }: DonutChartProps) {
+  const total = data.reduce((sum, d) => sum + d.value, 0)
 
-export function DonutChart({ data, title }: DonutChartProps) {
   return (
     <div className="rounded-md border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] p-4">
       <p className="text-sm font-semibold text-[var(--nova-text)] mb-2">{title}</p>
-      <ResponsiveContainer width="100%" height={260}>
-        <PieChart>
-          <Pie
-            data={data}
-            dataKey="value"
-            nameKey="label"
-            cx="50%"
-            cy="50%"
-            innerRadius={55}
-            outerRadius={85}
-            paddingAngle={2}
-            label={renderLabel}
-            labelLine={false}
-          >
-            {data.map(d => <Cell key={d.label} fill={d.color} />)}
-          </Pie>
-          <Tooltip
-            contentStyle={{
-              background: '#0E1421',
-              border: '1px solid #22304A',
-              borderRadius: 8,
-              fontSize: 12,
-              fontFamily: 'var(--font-sora)',
-              color: '#EEF2F8',
-            }}
-            formatter={(v: number, n: string) => [formatNumber(v), n]}
-          />
-        </PieChart>
-      </ResponsiveContainer>
-      <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center mt-1">
-        {data.map(d => (
-          <span key={d.label} className="inline-flex items-center gap-1.5 text-xs text-[var(--nova-text-muted)]">
-            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: d.color }} aria-hidden />
-            {d.label}
-          </span>
-        ))}
+      <div className="flex flex-col sm:flex-row items-center gap-4">
+        <div className="relative flex-shrink-0" style={{ width: 200, height: 200 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                dataKey="value"
+                nameKey="label"
+                cx="50%"
+                cy="50%"
+                innerRadius={62}
+                outerRadius={92}
+                paddingAngle={2}
+                stroke="none"
+              >
+                {data.map(d => <Cell key={d.label} fill={d.color} />)}
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <p className="text-xl font-bold text-[var(--nova-text)] leading-none">{formatNumber(total)}</p>
+            <p className="text-[0.6875rem] text-[var(--nova-text-dim)] mt-1">{centerLabel}</p>
+          </div>
+        </div>
+
+        <div className="flex-1 w-full flex flex-col gap-2.5">
+          {data.map(d => (
+            <div key={d.label} className="flex items-center gap-2.5">
+              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: d.color }} aria-hidden />
+              <span className="text-sm text-[var(--nova-text)] font-medium flex-shrink-0 w-10">{d.label}</span>
+              <span className="text-sm text-[var(--nova-text-muted)] flex-1 text-right">{formatNumber(d.value)}</span>
+              <span className="text-xs text-[var(--nova-text-dim)] w-12 text-right">
+                {total > 0 ? ((d.value / total) * 100).toFixed(1) : '0.0'}%
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
