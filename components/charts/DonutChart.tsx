@@ -11,11 +11,14 @@ interface DonutChartProps {
   centerLabel?: string
   rowsPerColumn?: number
   labelWidth?: number
+  size?: number
 }
 
-export function DonutChart({ data, title, centerLabel = 'Total', rowsPerColumn = 5, labelWidth = 40 }: DonutChartProps) {
+export function DonutChart({ data, title, centerLabel = 'Total', rowsPerColumn = 5, labelWidth = 40, size = 200 }: DonutChartProps) {
   const total = data.reduce((sum, d) => sum + d.value, 0)
   const ROWS = rowsPerColumn
+  const innerRadius = size * 0.31
+  const outerRadius = size * 0.46
   const numCols = Math.ceil(data.length / ROWS)
   // colunas de conteúdo em trilhas ímpares, colunas-traço (1px) em trilhas pares
   const gridTemplateColumns = Array.from({ length: numCols }, (_, i) => (i > 0 ? '1px auto' : 'auto')).join(' ')
@@ -24,7 +27,7 @@ export function DonutChart({ data, title, centerLabel = 'Total', rowsPerColumn =
     <div className="rounded-md border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] p-4">
       <p className="text-sm font-semibold text-[var(--nova-text)] mb-2">{title}</p>
       <div className="flex flex-col sm:flex-row items-center gap-4">
-        <div className="relative flex-shrink-0" style={{ width: 200, height: 200 }}>
+        <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -33,8 +36,8 @@ export function DonutChart({ data, title, centerLabel = 'Total', rowsPerColumn =
                 nameKey="label"
                 cx="50%"
                 cy="50%"
-                innerRadius={62}
-                outerRadius={92}
+                innerRadius={innerRadius}
+                outerRadius={outerRadius}
                 paddingAngle={2}
                 stroke="none"
               >
@@ -43,7 +46,12 @@ export function DonutChart({ data, title, centerLabel = 'Total', rowsPerColumn =
             </PieChart>
           </ResponsiveContainer>
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <p className="text-xl font-bold text-[var(--nova-text)] leading-none">{formatNumber(total)}</p>
+            <p
+              className="font-bold text-[var(--nova-text)] leading-none"
+              style={{ fontSize: size < 180 ? '1rem' : '1.25rem' }}
+            >
+              {formatNumber(total)}
+            </p>
             <p className="text-[0.6875rem] text-[var(--nova-text-dim)] mt-1">{centerLabel}</p>
           </div>
         </div>

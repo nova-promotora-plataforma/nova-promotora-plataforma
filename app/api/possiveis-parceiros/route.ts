@@ -34,13 +34,19 @@ export async function GET(req: NextRequest) {
   const porUf = Array.from(ufMap, ([uf, c]) => ({ uf, jaParceiro: c.jaParceiro, novos: c.novos, total: c.jaParceiro + c.novos }))
     .sort((a, b) => b.total - a.total)
 
-  const cnaeMap = new Map<string, number>()
-  for (const p of all) {
-    if (p.jaParceiro) continue
-    const label = p.cnaeDesc && p.cnaeDesc !== '(secundária)' ? p.cnaeDesc : 'CNAE secundário (não informado)'
-    cnaeMap.set(label, (cnaeMap.get(label) ?? 0) + 1)
+  function countNovosBy(getLabel: (p: Awaited<ReturnType<typeof fetchPossiblePartners>>[number]) => string) {
+    const map = new Map<string, number>()
+    for (const p of all) {
+      if (p.jaParceiro) continue
+      const label = getLabel(p)
+      map.set(label, (map.get(label) ?? 0) + 1)
+    }
+    return Array.from(map, ([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value)
   }
-  const porCnae = Array.from(cnaeMap, ([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value)
+
+  const porCnae   = countNovosBy(p => p.cnaeDesc && p.cnaeDesc !== '(secundária)' ? p.cnaeDesc : 'CNAE secundário (não informado)')
+  const porMatriz = countNovosBy(p => p.matriz ?? 'Não informado')
+  const porPorte  = countNovosBy(p => p.porte ?? 'Não informado')
 
   const filtered = all.filter(p => {
     if (busca &&
@@ -70,5 +76,5 @@ export async function GET(req: NextRequest) {
     ...p,
   }))
 
-  return NextResponse.json({ data: slice, total, page, pages, sortBy, sortDir, stats, porUf, porCnae })
+  return NextResponse.json({ data: slice, total, page, pages, sortBy, sortDir, stats, porUf, porCnae, porMatriz, porPorte })
 }

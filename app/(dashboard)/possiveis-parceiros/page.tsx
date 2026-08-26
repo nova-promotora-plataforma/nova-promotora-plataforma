@@ -41,7 +41,7 @@ interface UfBreakdown {
   total: number
 }
 
-interface CnaeCount { label: string; value: number }
+interface LabelCount { label: string; value: number }
 
 interface ApiResponse {
   data: PossiblePartner[]
@@ -50,7 +50,9 @@ interface ApiResponse {
   pages: number
   stats: Stats
   porUf: UfBreakdown[]
-  porCnae: CnaeCount[]
+  porCnae: LabelCount[]
+  porMatriz: LabelCount[]
+  porPorte: LabelCount[]
 }
 
 const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO']
@@ -68,7 +70,9 @@ export default function PossiveisParceirosPage() {
   const [loading, setLoading] = useState(true)
   const [stats, setStats]     = useState<Stats | null>(null)
   const [porUf, setPorUf] = useState<UfBreakdown[]>([])
-  const [porCnae, setPorCnae] = useState<CnaeCount[]>([])
+  const [porCnae, setPorCnae] = useState<LabelCount[]>([])
+  const [porMatriz, setPorMatriz] = useState<LabelCount[]>([])
+  const [porPorte, setPorPorte] = useState<LabelCount[]>([])
 
   // filtros
   const [busca, setBusca]           = useState('')
@@ -114,6 +118,8 @@ export default function PossiveisParceirosPage() {
       setStats(json.stats)
       setPorUf(json.porUf)
       setPorCnae(json.porCnae)
+      setPorMatriz(json.porMatriz)
+      setPorPorte(json.porPorte)
     } catch {
       setData([])
     } finally {
@@ -138,11 +144,17 @@ export default function PossiveisParceirosPage() {
     }))
   })()
 
-  const cnaeDonutData = porCnae.map((c, i) => ({
-    label: c.label,
-    value: c.value,
-    color: `hsl(${Math.round((i * 360) / porCnae.length)}, 65%, 58%)`,
-  }))
+  function toDonutData(items: LabelCount[]) {
+    return items.map((c, i) => ({
+      label: c.label,
+      value: c.value,
+      color: `hsl(${Math.round((i * 360) / items.length)}, 65%, 58%)`,
+    }))
+  }
+
+  const cnaeDonutData   = toDonutData(porCnae)
+  const matrizDonutData = toDonutData(porMatriz)
+  const porteDonutData  = toDonutData(porPorte)
 
   const pageNumbers = () => {
     const nums: (number | '...')[] = []
@@ -199,15 +211,32 @@ export default function PossiveisParceirosPage() {
           </div>
         )}
 
-        {/* Distribuição por CNAE */}
+        {/* Distribuição por CNAE, matriz/filial e porte */}
         {cnaeDonutData.length > 0 && (
-          <div className="mb-4">
+          <div className="flex flex-wrap gap-4 mb-4 items-start">
             <DonutChart
               data={cnaeDonutData}
               title="Novos prospects por CNAE"
               centerLabel="Novos"
               rowsPerColumn={11}
-              labelWidth={280}
+              labelWidth={240}
+              size={170}
+            />
+            <DonutChart
+              data={matrizDonutData}
+              title="Matriz ou filial"
+              centerLabel="Novos"
+              rowsPerColumn={4}
+              labelWidth={60}
+              size={140}
+            />
+            <DonutChart
+              data={porteDonutData}
+              title="Porte"
+              centerLabel="Novos"
+              rowsPerColumn={4}
+              labelWidth={80}
+              size={140}
             />
           </div>
         )}
