@@ -1,7 +1,7 @@
 'use client'
 
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
-import { formatNumber } from '@/lib/utils'
+import { formatNumber, cn } from '@/lib/utils'
 
 interface DonutSlice { label: string; value: number; color: string }
 
@@ -42,9 +42,15 @@ export function DonutChart({ data, title, centerLabel = 'Total' }: DonutChartPro
           </div>
         </div>
 
-        <div className="w-full sm:w-auto grid grid-flow-col grid-rows-5 gap-x-6 gap-y-2">
-          {data.map(d => (
-            <div key={d.label} className="flex items-center gap-2.5">
+        <div className="w-full sm:w-auto grid grid-flow-col grid-rows-5 gap-y-2">
+          {data.map((d, i) => (
+            <div
+              key={d.label}
+              className={cn(
+                'flex items-center gap-2.5 pr-6',
+                i % 5 === 0 && i > 0 && 'pl-6 border-l border-[var(--nova-border)]',
+              )}
+            >
               <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: d.color }} aria-hidden />
               <span className="text-sm text-[var(--nova-text)] font-medium flex-shrink-0 w-10">{d.label}</span>
               <span className="text-sm text-[var(--nova-text-muted)] w-16 text-right">{formatNumber(d.value)}</span>
