@@ -5,7 +5,6 @@ import { TopBar } from '@/components/layout/TopBar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { KPICard } from '@/components/ui/KPICard'
-import { BarChart } from '@/components/charts/BarChart'
 import { ChevronLeft, ChevronRight, Filter, Loader2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -34,7 +33,12 @@ interface Stats {
   novos: number
 }
 
-interface UfCount { label: string; value: number }
+interface UfBreakdown {
+  uf: string
+  jaParceiro: number
+  novos: number
+  total: number
+}
 
 interface ApiResponse {
   data: PossiblePartner[]
@@ -42,7 +46,7 @@ interface ApiResponse {
   page: number
   pages: number
   stats: Stats
-  novosPorUf: UfCount[]
+  porUf: UfBreakdown[]
 }
 
 const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO']
@@ -59,7 +63,7 @@ export default function PossiveisParceirosPage() {
   const [page, setPage]       = useState(1)
   const [loading, setLoading] = useState(true)
   const [stats, setStats]     = useState<Stats | null>(null)
-  const [novosPorUf, setNovosPorUf] = useState<UfCount[]>([])
+  const [porUf, setPorUf] = useState<UfBreakdown[]>([])
 
   // filtros
   const [busca, setBusca]           = useState('')
@@ -103,7 +107,7 @@ export default function PossiveisParceirosPage() {
       setPages(json.pages)
       setPage(json.page)
       setStats(json.stats)
-      setNovosPorUf(json.novosPorUf)
+      setPorUf(json.porUf)
     } catch {
       setData([])
     } finally {
@@ -167,10 +171,32 @@ export default function PossiveisParceirosPage() {
           )}
         </div>
 
-        {/* Novos prospects por UF */}
-        {novosPorUf.length > 0 && (
-          <div className="mb-4">
-            <BarChart data={novosPorUf} title="Novos prospects por UF" height={520} />
+        {/* Dados por estado */}
+        {porUf.length > 0 && (
+          <div className="rounded-md border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] overflow-hidden mb-4">
+            <p className="text-sm font-semibold text-[var(--nova-text)] px-4 pt-4 pb-2">Dados por estado</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm table-zebra" aria-label="Possíveis parceiros por estado">
+                <thead>
+                  <tr className="bg-[var(--nova-bg-elev-2)]">
+                    <th className="px-4 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">UF</th>
+                    <th className="px-4 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">Já parceiros</th>
+                    <th className="px-4 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">Só novos</th>
+                    <th className="px-4 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--nova-border)]/50">
+                  {porUf.map(u => (
+                    <tr key={u.uf} className="hover:bg-white/[0.02] transition-nova">
+                      <td className="px-4 py-2 font-medium text-[var(--nova-text)]">{u.uf}</td>
+                      <td className="px-4 py-2 text-[var(--nova-text-muted)]">{u.jaParceiro.toLocaleString('pt-BR')}</td>
+                      <td className="px-4 py-2 text-[var(--nova-text-muted)]">{u.novos.toLocaleString('pt-BR')}</td>
+                      <td className="px-4 py-2 text-[var(--nova-text)] font-medium">{u.total.toLocaleString('pt-BR')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

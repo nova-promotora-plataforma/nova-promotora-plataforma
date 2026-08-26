@@ -23,13 +23,16 @@ export async function GET(req: NextRequest) {
     novos:      all.filter(p => !p.jaParceiro).length,
   }
 
-  const novosPorUfMap = new Map<string, number>()
+  const ufMap = new Map<string, { jaParceiro: number; novos: number }>()
   for (const p of all) {
-    if (p.jaParceiro || !p.uf || !VALID_UFS.has(p.uf)) continue
-    novosPorUfMap.set(p.uf, (novosPorUfMap.get(p.uf) ?? 0) + 1)
+    if (!p.uf || !VALID_UFS.has(p.uf)) continue
+    const entry = ufMap.get(p.uf) ?? { jaParceiro: 0, novos: 0 }
+    if (p.jaParceiro) entry.jaParceiro++
+    else entry.novos++
+    ufMap.set(p.uf, entry)
   }
-  const novosPorUf = Array.from(novosPorUfMap, ([label, value]) => ({ label, value }))
-    .sort((a, b) => b.value - a.value)
+  const porUf = Array.from(ufMap, ([uf, c]) => ({ uf, jaParceiro: c.jaParceiro, novos: c.novos, total: c.jaParceiro + c.novos }))
+    .sort((a, b) => b.total - a.total)
 
   const filtered = all.filter(p => {
     if (busca &&
@@ -59,5 +62,5 @@ export async function GET(req: NextRequest) {
     ...p,
   }))
 
-  return NextResponse.json({ data: slice, total, page, pages, sortBy, sortDir, stats, novosPorUf })
+  return NextResponse.json({ data: slice, total, page, pages, sortBy, sortDir, stats, porUf })
 }
