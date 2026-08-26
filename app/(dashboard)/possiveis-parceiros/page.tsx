@@ -200,7 +200,8 @@ export default function PossiveisParceirosPage() {
                     { label: 'CNPJ',           col: null },
                     { label: 'CNAE',           col: null },
                     { label: 'Porte',          col: null },
-                    { label: 'Cidade / UF',    col: 'cidade' },
+                    { label: 'Cidade',         col: 'cidade' },
+                    { label: 'UF',             col: 'uf' },
                     { label: 'Camada',         col: 'camada' },
                     { label: 'Já parceiro',    col: null },
                   ] as { label: string; col: string | null }[]).map(({ label, col }) => (
@@ -222,14 +223,14 @@ export default function PossiveisParceirosPage() {
               <tbody className="divide-y divide-[var(--nova-border)]/50">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-[var(--nova-text-dim)]">
+                    <td colSpan={8} className="px-4 py-12 text-center text-[var(--nova-text-dim)]">
                       <Loader2 size={20} className="animate-spin inline mr-2" />
                       Carregando possíveis parceiros…
                     </td>
                   </tr>
                 ) : data.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-[var(--nova-text-dim)]">
+                    <td colSpan={8} className="px-4 py-12 text-center text-[var(--nova-text-dim)]">
                       Nenhum possível parceiro encontrado com os filtros aplicados.
                     </td>
                   </tr>
@@ -251,22 +252,17 @@ export default function PossiveisParceirosPage() {
                       )}
                     </td>
                     <td className="px-4 py-2.5 text-[var(--nova-text-muted)]">{p.porte ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-[var(--nova-text-muted)]">
-                      {p.cidade ?? '—'}{p.uf ? ` / ${p.uf}` : ''}
-                    </td>
+                    <td className="px-4 py-2.5 text-[var(--nova-text-muted)]">{p.cidade ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-[var(--nova-text-muted)]">{p.uf ?? '—'}</td>
                     <td className="px-4 py-2.5">
                       <Badge variant={p.camada === 'NUCLEO' ? 'blue' : 'default'}>
                         {p.camada === 'NUCLEO' ? 'Núcleo' : 'Amplo'}
                       </Badge>
                     </td>
                     <td className="px-4 py-2.5">
-                      {p.jaParceiro ? (
-                        <Badge variant="ativo" dot>Já é parceiro</Badge>
-                      ) : p.raizNaCarteira ? (
-                        <Badge variant="amber" dot>Raiz na carteira</Badge>
-                      ) : (
-                        <Badge variant="default">Novo prospect</Badge>
-                      )}
+                      <Badge variant={p.jaParceiro ? 'ativo' : 'default'} dot>
+                        {p.jaParceiro ? 'Sim' : 'Não'}
+                      </Badge>
                     </td>
                   </tr>
                 ))}

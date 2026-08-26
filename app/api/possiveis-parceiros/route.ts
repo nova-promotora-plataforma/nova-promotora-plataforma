@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
   filtered.sort((a, b) => {
     let diff = 0
     if      (sortBy === 'cidade') diff = (a.cidade ?? '').localeCompare(b.cidade ?? '', 'pt-BR')
+    else if (sortBy === 'uf')     diff = (a.uf ?? '').localeCompare(b.uf ?? '', 'pt-BR')
     else if (sortBy === 'camada') diff = a.camada.localeCompare(b.camada)
     else                          diff = a.razaoSocial.localeCompare(b.razaoSocial, 'pt-BR')
     return sortDir === 'desc' ? -diff : diff
