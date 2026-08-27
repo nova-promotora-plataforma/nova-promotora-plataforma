@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchPossiblePartners } from '@/lib/sheets/possiveis-parceiros'
 import { parseFilters, applyFilters } from '@/lib/sheets/possiveis-parceiros-filters'
+import { computeCnaeIndice, priorityFor } from '@/lib/sheets/possiveis-parceiros-priority'
 
 function formatCnpj(cnpj: string) {
   if (cnpj.length !== 14) return cnpj
@@ -13,7 +14,7 @@ function csvField(v: string) {
 
 const HEADERS = [
   'cnpj', 'razao_social', 'nome_fantasia', 'matriz', 'camada', 'cnae_principal', 'cnae_desc',
-  'porte', 'cidade', 'uf', 'telefone', 'email', 'ja_parceiro', 'raiz_na_carteira',
+  'porte', 'cidade', 'uf', 'telefone', 'email', 'ja_parceiro', 'raiz_na_carteira', 'prioridade',
 ]
 
 export async function GET(req: NextRequest) {
@@ -21,7 +22,8 @@ export async function GET(req: NextRequest) {
   const filters = parseFilters(searchParams)
 
   const all = await fetchPossiblePartners()
-  const filtered = applyFilters(all, filters)
+  const indiceMap = computeCnaeIndice(all)
+  const filtered = applyFilters(all, filters, indiceMap)
 
   const lines = [HEADERS.join(';')]
   for (const p of filtered) {
@@ -40,6 +42,7 @@ export async function GET(req: NextRequest) {
       p.email ?? '',
       p.jaParceiro ? 'SIM' : '',
       p.raizNaCarteira ? 'SIM' : '',
+      priorityFor(p, indiceMap),
     ].map(v => csvField(String(v))).join(';'))
   }
 

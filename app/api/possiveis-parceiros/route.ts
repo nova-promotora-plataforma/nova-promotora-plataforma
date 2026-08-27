@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchPossiblePartners } from '@/lib/sheets/possiveis-parceiros'
 import { parseFilters, applyFilters } from '@/lib/sheets/possiveis-parceiros-filters'
+import { computeCnaeIndice, priorityFor } from '@/lib/sheets/possiveis-parceiros-priority'
 
 const PAGE_SIZE = 20
 
@@ -46,7 +47,8 @@ export async function GET(req: NextRequest) {
   const porMatriz = countNovosBy(p => p.matriz ?? 'Não informado')
   const porPorte  = countNovosBy(p => p.porte ?? 'Não informado')
 
-  const filtered = applyFilters(all, filters)
+  const indiceMap = computeCnaeIndice(all)
+  const filtered = applyFilters(all, filters, indiceMap)
 
   filtered.sort((a, b) => {
     let diff = 0
@@ -62,6 +64,7 @@ export async function GET(req: NextRequest) {
   const slice = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((p, i) => ({
     id: `${p.cnpj}-${(page - 1) * PAGE_SIZE + i}`,
     ...p,
+    prioridade: priorityFor(p, indiceMap),
   }))
 
   return NextResponse.json({ data: slice, total, page, pages, sortBy, sortDir, stats, porUf, porCnae, porMatriz, porPorte })

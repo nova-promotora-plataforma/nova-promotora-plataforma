@@ -26,6 +26,7 @@ interface PossiblePartner {
   email: string | null
   jaParceiro: boolean
   raizNaCarteira: boolean
+  prioridade: 'ALTA' | 'MEDIA' | 'BAIXA'
 }
 
 interface Stats {
@@ -80,7 +81,8 @@ export default function PossiveisParceirosPage() {
   const [cidade, setCidade]         = useState('')
   const [camada, setCamada]         = useState('')
   const [jaParceiro, setJaParceiro] = useState('')
-  const [applied, setApplied] = useState({ busca: '', uf: '', cidade: '', camada: '', jaParceiro: '' })
+  const [prioridade, setPrioridade] = useState('')
+  const [applied, setApplied] = useState({ busca: '', uf: '', cidade: '', camada: '', jaParceiro: '', prioridade: '' })
   const [sortBy,  setSortBy]  = useState('razaoSocial')
   const [sortDir, setSortDir] = useState('asc')
   const [cidadeOptions, setCidadeOptions] = useState<string[]>([])
@@ -110,6 +112,7 @@ export default function PossiveisParceirosPage() {
       if (filters.cidade)     params.set('cidade', filters.cidade)
       if (filters.camada)     params.set('camada', filters.camada)
       if (filters.jaParceiro) params.set('jaParceiro', filters.jaParceiro)
+      if (filters.prioridade) params.set('prioridade', filters.prioridade)
 
       const res = await fetch(`/api/possiveis-parceiros?${params}`)
       if (!res.ok) throw new Error('Erro ao carregar possíveis parceiros')
@@ -141,7 +144,7 @@ export default function PossiveisParceirosPage() {
   }, [uf])
 
   function applyFilters() {
-    setApplied({ busca, uf, cidade, camada, jaParceiro })
+    setApplied({ busca, uf, cidade, camada, jaParceiro, prioridade })
   }
 
   function exportUrl() {
@@ -151,6 +154,7 @@ export default function PossiveisParceirosPage() {
     if (applied.cidade)     params.set('cidade', applied.cidade)
     if (applied.camada)     params.set('camada', applied.camada)
     if (applied.jaParceiro) params.set('jaParceiro', applied.jaParceiro)
+    if (applied.prioridade) params.set('prioridade', applied.prioridade)
     return `/api/possiveis-parceiros/export?${params}`
   }
 
@@ -332,6 +336,21 @@ export default function PossiveisParceirosPage() {
             <option value="nao">Só novos prospects</option>
             <option value="sim">Só já parceiros</option>
           </select>
+          <select
+            value={prioridade}
+            onChange={e => setPrioridade(e.target.value)}
+            aria-label="Filtrar por prioridade"
+            className={cn(
+              'rounded-sm border bg-[var(--nova-bg-elev)] px-3 py-2 text-sm text-[var(--nova-text)]',
+              'border-[var(--nova-border)] outline-none transition-nova cursor-pointer',
+              'focus:border-[var(--nova-blue)]/50',
+            )}
+          >
+            <option value="">Todas prioridades</option>
+            <option value="ALTA">Alta</option>
+            <option value="MEDIA">Média</option>
+            <option value="BAIXA">Baixa</option>
+          </select>
           <Button variant="blue" size="sm" onClick={applyFilters}>
             <Filter size={14} /> Filtrar
           </Button>
@@ -361,6 +380,7 @@ export default function PossiveisParceirosPage() {
                     { label: 'Cidade',         col: 'cidade' },
                     { label: 'UF',             col: 'uf' },
                     { label: 'Camada',         col: 'camada' },
+                    { label: 'Prioridade',     col: null },
                     { label: 'Já parceiro',    col: null },
                   ] as { label: string; col: string | null }[]).map(({ label, col }) => (
                     <th
@@ -381,14 +401,14 @@ export default function PossiveisParceirosPage() {
               <tbody className="divide-y divide-[var(--nova-border)]/50">
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center text-[var(--nova-text-dim)]">
+                    <td colSpan={9} className="px-4 py-12 text-center text-[var(--nova-text-dim)]">
                       <Loader2 size={20} className="animate-spin inline mr-2" />
                       Carregando possíveis parceiros…
                     </td>
                   </tr>
                 ) : data.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center text-[var(--nova-text-dim)]">
+                    <td colSpan={9} className="px-4 py-12 text-center text-[var(--nova-text-dim)]">
                       Nenhum possível parceiro encontrado com os filtros aplicados.
                     </td>
                   </tr>
@@ -415,6 +435,14 @@ export default function PossiveisParceirosPage() {
                     <td className="px-4 py-2.5">
                       <Badge variant={p.camada === 'NUCLEO' ? 'blue' : 'default'}>
                         {p.camada === 'NUCLEO' ? 'Núcleo' : 'Amplo'}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <Badge
+                        variant={p.prioridade === 'ALTA' ? 'ativo' : p.prioridade === 'MEDIA' ? 'amber' : 'inativo'}
+                        dot
+                      >
+                        {p.prioridade === 'ALTA' ? 'Alta' : p.prioridade === 'MEDIA' ? 'Média' : 'Baixa'}
                       </Badge>
                     </td>
                     <td className="px-4 py-2.5">
