@@ -82,7 +82,8 @@ export default function PossiveisParceirosPage() {
   const [camada, setCamada]         = useState('')
   const [jaParceiro, setJaParceiro] = useState('')
   const [prioridade, setPrioridade] = useState('')
-  const [applied, setApplied] = useState({ busca: '', uf: '', cidade: '', camada: '', jaParceiro: '', prioridade: '' })
+  const [termoMercado, setTermoMercado] = useState(false)
+  const [applied, setApplied] = useState({ busca: '', uf: '', cidade: '', camada: '', jaParceiro: '', prioridade: '', termoMercado: '' })
   const [sortBy,  setSortBy]  = useState('razaoSocial')
   const [sortDir, setSortDir] = useState('asc')
   const [cidadeOptions, setCidadeOptions] = useState<string[]>([])
@@ -112,7 +113,8 @@ export default function PossiveisParceirosPage() {
       if (filters.cidade)     params.set('cidade', filters.cidade)
       if (filters.camada)     params.set('camada', filters.camada)
       if (filters.jaParceiro) params.set('jaParceiro', filters.jaParceiro)
-      if (filters.prioridade) params.set('prioridade', filters.prioridade)
+      if (filters.prioridade)   params.set('prioridade', filters.prioridade)
+      if (filters.termoMercado) params.set('termoMercado', filters.termoMercado)
 
       const res = await fetch(`/api/possiveis-parceiros?${params}`)
       if (!res.ok) throw new Error('Erro ao carregar possíveis parceiros')
@@ -144,17 +146,18 @@ export default function PossiveisParceirosPage() {
   }, [uf])
 
   function applyFilters() {
-    setApplied({ busca, uf, cidade, camada, jaParceiro, prioridade })
+    setApplied({ busca, uf, cidade, camada, jaParceiro, prioridade, termoMercado: termoMercado ? 'sim' : '' })
   }
 
   function exportUrl() {
     const params = new URLSearchParams()
-    if (applied.busca)      params.set('q', applied.busca)
-    if (applied.uf)         params.set('uf', applied.uf)
-    if (applied.cidade)     params.set('cidade', applied.cidade)
-    if (applied.camada)     params.set('camada', applied.camada)
-    if (applied.jaParceiro) params.set('jaParceiro', applied.jaParceiro)
-    if (applied.prioridade) params.set('prioridade', applied.prioridade)
+    if (applied.busca)        params.set('q', applied.busca)
+    if (applied.uf)           params.set('uf', applied.uf)
+    if (applied.cidade)       params.set('cidade', applied.cidade)
+    if (applied.camada)       params.set('camada', applied.camada)
+    if (applied.jaParceiro)   params.set('jaParceiro', applied.jaParceiro)
+    if (applied.prioridade)   params.set('prioridade', applied.prioridade)
+    if (applied.termoMercado) params.set('termoMercado', applied.termoMercado)
     return `/api/possiveis-parceiros/export?${params}`
   }
 
@@ -351,6 +354,15 @@ export default function PossiveisParceirosPage() {
             <option value="MEDIA">Média</option>
             <option value="BAIXA">Baixa</option>
           </select>
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-sm border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] text-sm text-[var(--nova-text-muted)] cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={termoMercado}
+              onChange={e => setTermoMercado(e.target.checked)}
+              className="accent-[var(--nova-blue)] cursor-pointer"
+            />
+            Nome parece agente do mercado
+          </label>
           <Button variant="blue" size="sm" onClick={applyFilters}>
             <Filter size={14} /> Filtrar
           </Button>
