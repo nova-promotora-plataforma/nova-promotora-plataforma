@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchPossiblePartners } from '@/lib/sheets/possiveis-parceiros'
+import { parseFilters, applyFilters } from '@/lib/sheets/possiveis-parceiros-filters'
 
 const PAGE_SIZE = 20
 
@@ -7,13 +8,10 @@ const VALID_UFS = new Set(['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
-  const page       = Math.max(1, parseInt(searchParams.get('page') ?? '1'))
-  const busca      = (searchParams.get('q') ?? '').toLowerCase().trim()
-  const uf         = (searchParams.get('uf') ?? '').toUpperCase()
-  const camada     = (searchParams.get('camada') ?? '').toUpperCase()
-  const jaParceiro = searchParams.get('jaParceiro') ?? ''
-  const sortBy     = searchParams.get('sortBy')  ?? 'razaoSocial'
-  const sortDir    = searchParams.get('sortDir') ?? 'asc'
+  const page    = Math.max(1, parseInt(searchParams.get('page') ?? '1'))
+  const sortBy  = searchParams.get('sortBy')  ?? 'razaoSocial'
+  const sortDir = searchParams.get('sortDir') ?? 'asc'
+  const filters = parseFilters(searchParams)
 
   const all = await fetchPossiblePartners()
 
@@ -48,17 +46,7 @@ export async function GET(req: NextRequest) {
   const porMatriz = countNovosBy(p => p.matriz ?? 'Não informado')
   const porPorte  = countNovosBy(p => p.porte ?? 'Não informado')
 
-  const filtered = all.filter(p => {
-    if (busca &&
-        !p.razaoSocial.toLowerCase().includes(busca) &&
-        !(p.nomeFantasia ?? '').toLowerCase().includes(busca) &&
-        !p.cnpj.includes(busca)) return false
-    if (uf         && p.uf !== uf) return false
-    if (camada     && p.camada !== camada) return false
-    if (jaParceiro === 'sim' && !p.jaParceiro) return false
-    if (jaParceiro === 'nao' && p.jaParceiro) return false
-    return true
-  })
+  const filtered = applyFilters(all, filters)
 
   filtered.sort((a, b) => {
     let diff = 0

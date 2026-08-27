@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { KPICard } from '@/components/ui/KPICard'
 import { DonutChart } from '@/components/charts/DonutChart'
-import { ChevronLeft, ChevronRight, Filter, Loader2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Filter, Loader2, ChevronUp, ChevronDown, ChevronsUpDown, Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const PAGE_SIZE = 20
@@ -77,11 +77,13 @@ export default function PossiveisParceirosPage() {
   // filtros
   const [busca, setBusca]           = useState('')
   const [uf, setUf]                 = useState('')
+  const [cidade, setCidade]         = useState('')
   const [camada, setCamada]         = useState('')
   const [jaParceiro, setJaParceiro] = useState('')
-  const [applied, setApplied] = useState({ busca: '', uf: '', camada: '', jaParceiro: '' })
+  const [applied, setApplied] = useState({ busca: '', uf: '', cidade: '', camada: '', jaParceiro: '' })
   const [sortBy,  setSortBy]  = useState('razaoSocial')
   const [sortDir, setSortDir] = useState('asc')
+  const [cidadeOptions, setCidadeOptions] = useState<string[]>([])
 
   function toggleSort(col: string) {
     if (sortBy === col) {
@@ -105,6 +107,7 @@ export default function PossiveisParceirosPage() {
       const params = new URLSearchParams({ page: String(p), limit: String(PAGE_SIZE), sortBy: sb, sortDir: sd })
       if (filters.busca)      params.set('q', filters.busca)
       if (filters.uf)         params.set('uf', filters.uf)
+      if (filters.cidade)     params.set('cidade', filters.cidade)
       if (filters.camada)     params.set('camada', filters.camada)
       if (filters.jaParceiro) params.set('jaParceiro', filters.jaParceiro)
 
@@ -129,8 +132,26 @@ export default function PossiveisParceirosPage() {
 
   useEffect(() => { load(1, applied, sortBy, sortDir) }, [load, applied, sortBy, sortDir])
 
+  useEffect(() => {
+    if (!uf) { setCidadeOptions([]); return }
+    fetch(`/api/possiveis-parceiros/cidades?uf=${uf}`)
+      .then(res => res.json())
+      .then(json => setCidadeOptions(json.cidades ?? []))
+      .catch(() => setCidadeOptions([]))
+  }, [uf])
+
   function applyFilters() {
-    setApplied({ busca, uf, camada, jaParceiro })
+    setApplied({ busca, uf, cidade, camada, jaParceiro })
+  }
+
+  function exportUrl() {
+    const params = new URLSearchParams()
+    if (applied.busca)      params.set('q', applied.busca)
+    if (applied.uf)         params.set('uf', applied.uf)
+    if (applied.cidade)     params.set('cidade', applied.cidade)
+    if (applied.camada)     params.set('camada', applied.camada)
+    if (applied.jaParceiro) params.set('jaParceiro', applied.jaParceiro)
+    return `/api/possiveis-parceiros/export?${params}`
   }
 
   function goTo(p: number) { load(p, applied, sortBy, sortDir) }
@@ -258,7 +279,7 @@ export default function PossiveisParceirosPage() {
           />
           <select
             value={uf}
-            onChange={e => setUf(e.target.value)}
+            onChange={e => { setUf(e.target.value); setCidade('') }}
             aria-label="Filtrar por UF"
             className={cn(
               'rounded-sm border bg-[var(--nova-bg-elev)] px-3 py-2 text-sm text-[var(--nova-text)]',
@@ -268,6 +289,20 @@ export default function PossiveisParceirosPage() {
           >
             <option value="">Todos UFs</option>
             {UFS.map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+          <select
+            value={cidade}
+            onChange={e => setCidade(e.target.value)}
+            disabled={!uf}
+            aria-label="Filtrar por cidade"
+            className={cn(
+              'rounded-sm border bg-[var(--nova-bg-elev)] px-3 py-2 text-sm text-[var(--nova-text)]',
+              'border-[var(--nova-border)] outline-none transition-nova cursor-pointer',
+              'focus:border-[var(--nova-blue)]/50 disabled:opacity-40 disabled:cursor-not-allowed',
+            )}
+          >
+            <option value="">{uf ? 'Todas cidades' : 'Escolha um UF'}</option>
+            {cidadeOptions.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <select
             value={camada}
@@ -300,6 +335,11 @@ export default function PossiveisParceirosPage() {
           <Button variant="blue" size="sm" onClick={applyFilters}>
             <Filter size={14} /> Filtrar
           </Button>
+          <a href={exportUrl()} className="ml-auto">
+            <Button variant="primary" size="sm">
+              <Download size={14} /> Exportar base
+            </Button>
+          </a>
         </div>
 
         {/* Contagem */}
