@@ -387,6 +387,8 @@ export default function PossiveisParceirosPage() {
                   {([
                     { label: 'Razão social',  col: 'razaoSocial' },
                     { label: 'CNPJ',           col: null },
+                    { label: 'Telefone',      col: null },
+                    { label: 'Email',         col: null },
                     { label: 'CNAE',           col: null },
                     { label: 'Porte',          col: null },
                     { label: 'Cidade',         col: 'cidade' },
@@ -413,14 +415,14 @@ export default function PossiveisParceirosPage() {
               <tbody className="divide-y divide-[var(--nova-border)]/50">
                 {loading ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center text-[var(--nova-text-dim)]">
+                    <td colSpan={11} className="px-4 py-12 text-center text-[var(--nova-text-dim)]">
                       <Loader2 size={20} className="animate-spin inline mr-2" />
                       Carregando possíveis parceiros…
                     </td>
                   </tr>
                 ) : data.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center text-[var(--nova-text-dim)]">
+                    <td colSpan={11} className="px-4 py-12 text-center text-[var(--nova-text-dim)]">
                       Nenhum possível parceiro encontrado com os filtros aplicados.
                     </td>
                   </tr>
@@ -434,6 +436,12 @@ export default function PossiveisParceirosPage() {
                     </td>
                     <td className="px-4 py-2.5 text-[0.6875rem] text-[var(--nova-text-dim)] font-mono">
                       {formatCnpj(p.cnpj)}
+                    </td>
+                    <td className="px-4 py-2.5 text-[0.6875rem] text-[var(--nova-text-muted)] whitespace-nowrap">
+                      {p.telefone || '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-[0.6875rem] text-[var(--nova-text-muted)]">
+                      {p.email || '—'}
                     </td>
                     <td className="px-4 py-2.5 text-[var(--nova-text-muted)]">
                       <p className="font-mono text-[0.6875rem]">{p.cnaePrincipal}</p>
