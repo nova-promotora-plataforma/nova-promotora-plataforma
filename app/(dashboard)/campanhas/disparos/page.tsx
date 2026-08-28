@@ -147,7 +147,7 @@ const CAMPANHAS: Campanha[] = [
     nome: 'Elegíveis Sem Débito 3m/6m – R$50-100k',
     data: '10/08/2026',
     status: 'Concluída',
-    total: 307,
+    total: 306,
     enviados: 226,
     entregues: 225,
     lidos: 147,
