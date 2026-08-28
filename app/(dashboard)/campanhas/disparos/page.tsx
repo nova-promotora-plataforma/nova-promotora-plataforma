@@ -360,7 +360,7 @@ function BenchmarkBar({ campanhas }: { campanhas: Campanha[] }) {
   )
 }
 
-type FiltroLead = 'todos' | 'respondeu' | 'lido' | 'entregue' | 'falha'
+type FiltroLead = 'todos' | 'respondeu' | 'lido' | 'entregue' | 'sem_atendimento' | 'falha'
 
 export default function DisparosDashboardPage() {
   const [selectedId, setSelectedId] = useState(CAMPANHAS[0].id)
@@ -460,11 +460,12 @@ export default function DisparosDashboardPage() {
     const matchBusca = !q || l.nome.toLowerCase().includes(q) || l.whatsapp.includes(q)
     const s = l.status.toLowerCase()
     const matchFiltro =
-      filtroLead === 'todos'     ? true :
-      filtroLead === 'respondeu' ? !!l.respondeu_em :
-      filtroLead === 'lido'      ? s === 'read' :
-      filtroLead === 'entregue'  ? s === 'delivered' :
-      filtroLead === 'falha'     ? s === 'failed' : true
+      filtroLead === 'todos'           ? true :
+      filtroLead === 'respondeu'       ? !!l.respondeu_em :
+      filtroLead === 'lido'            ? s === 'read' :
+      filtroLead === 'entregue'        ? s === 'delivered' :
+      filtroLead === 'sem_atendimento' ? (!!l.entregue_em && !l.lido_em && !l.respondeu_em && s !== 'failed') :
+      filtroLead === 'falha'           ? s === 'failed' : true
     return matchBusca && matchFiltro
   }).sort((a, b) => {
     if (!sortCol) return 0
@@ -920,11 +921,12 @@ export default function DisparosDashboardPage() {
                 </div>
                 <div className="flex gap-1">
                   {([
-                    { k: 'todos',     label: 'Todos' },
-                    { k: 'respondeu', label: 'Responderam' },
-                    { k: 'lido',      label: 'Lidos' },
-                    { k: 'entregue',  label: 'Entregues' },
-                    { k: 'falha',     label: 'Falhas' },
+                    { k: 'todos',           label: 'Todos' },
+                    { k: 'respondeu',       label: 'Responderam' },
+                    { k: 'lido',            label: 'Lidos' },
+                    { k: 'entregue',        label: 'Entregues' },
+                    { k: 'sem_atendimento', label: 'Sem atendimento' },
+                    { k: 'falha',           label: 'Falhas' },
                   ] as { k: FiltroLead; label: string }[]).map(f => (
                     <button key={f.k} onClick={() => setFiltroLead(f.k)}
                       className={cn('px-3 py-1.5 text-xs rounded-md border transition-nova',
