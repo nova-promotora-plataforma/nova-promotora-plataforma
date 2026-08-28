@@ -905,10 +905,10 @@ export default function DisparosDashboardPage() {
                 </div>
                 <div className="flex gap-1">
                   {([
-                    { k: 'todos',           label: 'Todos' },
-                    { k: 'respondeu',       label: 'Responderam' },
-                    { k: 'lido',            label: 'Lidos' },
+                    { k: 'todos',           label: 'Enviados' },
                     { k: 'entregue',        label: 'Entregues' },
+                    { k: 'lido',            label: 'Lidos' },
+                    { k: 'respondeu',       label: 'Respostas' },
                     { k: 'sem_atendimento', label: 'Sem atendimento' },
                     { k: 'falha',           label: 'Falhas' },
                   ] as { k: FiltroLead; label: string }[]).map(f => (
