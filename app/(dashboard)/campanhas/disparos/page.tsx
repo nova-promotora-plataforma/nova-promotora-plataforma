@@ -388,10 +388,35 @@ export default function DisparosDashboardPage() {
       const campanha = CAMPANHAS.find(x => x.id === id)
       let text: string
       if (campanha?.sheetId) {
-        const url = `https://docs.google.com/spreadsheets/d/${campanha.sheetId}/gviz/tq?tqx=out:csv&sheet=Enviados`
-        const res = await fetch(url, { cache: 'no-store' })
-        if (!res.ok) { setLeadsError('error'); return }
-        text = await res.text()
+        const [resEnviados, resFalhas] = await Promise.all([
+          fetch(`https://docs.google.com/spreadsheets/d/${campanha.sheetId}/gviz/tq?tqx=out:csv&sheet=Enviados`, { cache: 'no-store' }),
+          fetch(`https://docs.google.com/spreadsheets/d/${campanha.sheetId}/gviz/tq?tqx=out:csv&sheet=Falhas`, { cache: 'no-store' }),
+        ])
+        if (!resEnviados.ok) { setLeadsError('error'); return }
+        const textEnviados = await resEnviados.text()
+        const textFalhas = resFalhas.ok ? await resFalhas.text() : ''
+        text = textEnviados
+        const falhasLeads = textFalhas ? parseLeadsCSV(textFalhas) : []
+        setLeads([...parseLeadsCSV(textEnviados), ...falhasLeads])
+        // skip the setLeads below for this branch
+        if (campanha?.codesSheetId) {
+          setProducaoLoading(true)
+          try {
+            const tabs = campanha.producaoTabs?.join(',') ?? ''
+            const prodParam = campanha.producaoSheetId
+              ? `&producaoSheetId=${campanha.producaoSheetId}&tabs=${tabs}`
+              : ''
+            const pRes = await fetch(
+              `/api/producao-leads?codesSheetId=${campanha.codesSheetId}${prodParam}`,
+              { cache: 'no-store' },
+            )
+            if (pRes.ok) setProducaoData(await pRes.json())
+          } catch { /* silently ignore */ } finally {
+            setProducaoLoading(false)
+          }
+        }
+        setLeadsLoading(false)
+        return
       } else {
         const res = await fetch(`/campanhas/${id}.csv`, { cache: 'no-store' })
         if (res.status === 404) { setLeadsError('not_found'); return }
