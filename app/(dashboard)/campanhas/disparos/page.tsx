@@ -890,7 +890,7 @@ export default function DisparosDashboardPage() {
             </div>
           )}
 
-          {!leadsLoading && leadsError === 'none' && leads.length > 0 && (
+          {!leadsLoading && leadsError === 'none' && (leadsTabs['todos']?.length ?? 0) > 0 && (
             <>
               {/* Filtros de lead */}
               <div className="px-4 py-3 border-b border-[var(--nova-border)] flex flex-wrap gap-2 items-center">
@@ -924,7 +924,12 @@ export default function DisparosDashboardPage() {
               </div>
 
               {/* Tabela */}
-              <div className="overflow-x-auto">
+              {leads.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-10 gap-2 text-[var(--nova-text-dim)]">
+                  <p className="text-sm">Nenhum lead nesta etapa</p>
+                </div>
+              )}
+              {leads.length > 0 && <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-[var(--nova-bg-elev-2)]">
@@ -1023,7 +1028,7 @@ export default function DisparosDashboardPage() {
                     })}
                   </tbody>
                 </table>
-              </div>
+              </div>}
               {leadsFiltrados.length > 200 && (
                 <div className="px-4 py-2.5 border-t border-[var(--nova-border)] text-xs text-[var(--nova-text-dim)]">
                   Exibindo 200 de {leadsFiltrados.length} leads
