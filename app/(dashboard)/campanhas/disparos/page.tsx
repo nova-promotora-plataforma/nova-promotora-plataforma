@@ -362,10 +362,21 @@ function BenchmarkBar({ campanhas }: { campanhas: Campanha[] }) {
 
 type FiltroLead = 'todos' | 'respondeu' | 'lido' | 'entregue' | 'sem_atendimento' | 'falha'
 
+const SHEET_TABS: Record<FiltroLead, string> = {
+  todos:           'Enviados',
+  entregue:        'Entregues',
+  lido:            'Lidos',
+  respondeu:       'Respostas',
+  sem_atendimento: 'Sem atendimento',
+  falha:           'Falhas',
+}
+
+type LeadsTabs = Partial<Record<FiltroLead, LeadDisparo[]>>
+
 export default function DisparosDashboardPage() {
   const [selectedId, setSelectedId] = useState(CAMPANHAS[0].id)
   const [open, setOpen]             = useState(false)
-  const [leads, setLeads]           = useState<LeadDisparo[]>([])
+  const [leadsTabs, setLeadsTabs]   = useState<LeadsTabs>({})
   const [leadsLoading, setLeadsLoading] = useState(false)
   const [leadsError, setLeadsError] = useState<'none' | 'not_found' | 'error'>('none')
   const [buscaLead, setBuscaLead]   = useState('')
@@ -376,35 +387,37 @@ export default function DisparosDashboardPage() {
   const [sortDir, setSortDir]       = useState<'asc' | 'desc'>('asc')
 
   const c = CAMPANHAS.find(x => x.id === selectedId) ?? CAMPANHAS[0]
+  const leads = leadsTabs[filtroLead] ?? leadsTabs['todos'] ?? []
 
   const carregarLeads = useCallback(async (id: string) => {
     setLeadsLoading(true)
     setLeadsError('none')
-    setLeads([])
+    setLeadsTabs({})
     setProducaoData(null)
     setBuscaLead('')
     setFiltroLead('todos')
     try {
       const campanha = CAMPANHAS.find(x => x.id === id)
-      let text: string
       if (campanha?.sheetId) {
-        const [resEnviados, resFalhas] = await Promise.all([
-          fetch(`https://docs.google.com/spreadsheets/d/${campanha.sheetId}/gviz/tq?tqx=out:csv&sheet=Enviados`, { cache: 'no-store' }),
-          fetch(`https://docs.google.com/spreadsheets/d/${campanha.sheetId}/gviz/tq?tqx=out:csv&sheet=Falhas`, { cache: 'no-store' }),
-        ])
-        if (!resEnviados.ok) { setLeadsError('error'); return }
-        const textEnviados = await resEnviados.text()
-        const textFalhas = resFalhas.ok ? await resFalhas.text() : ''
-        text = textEnviados
-        const falhasLeads = textFalhas ? parseLeadsCSV(textFalhas) : []
-        setLeads([...parseLeadsCSV(textEnviados), ...falhasLeads])
-        // skip the setLeads below for this branch
+        const tabKeys = Object.keys(SHEET_TABS) as FiltroLead[]
+        const results = await Promise.all(
+          tabKeys.map(k =>
+            fetch(`https://docs.google.com/spreadsheets/d/${campanha.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_TABS[k])}`, { cache: 'no-store' })
+              .then(r => r.ok ? r.text() : '')
+              .catch(() => '')
+          )
+        )
+        const tabs: LeadsTabs = {}
+        tabKeys.forEach((k, i) => { tabs[k] = parseLeadsCSV(results[i]) })
+        if (!tabs.todos?.length) { setLeadsError('not_found'); return }
+        setLeadsTabs(tabs)
+
         if (campanha?.codesSheetId) {
           setProducaoLoading(true)
           try {
-            const tabs = campanha.producaoTabs?.join(',') ?? ''
+            const prodTabs = campanha.producaoTabs?.join(',') ?? ''
             const prodParam = campanha.producaoSheetId
-              ? `&producaoSheetId=${campanha.producaoSheetId}&tabs=${tabs}`
+              ? `&producaoSheetId=${campanha.producaoSheetId}&tabs=${prodTabs}`
               : ''
             const pRes = await fetch(
               `/api/producao-leads?codesSheetId=${campanha.codesSheetId}${prodParam}`,
@@ -415,31 +428,11 @@ export default function DisparosDashboardPage() {
             setProducaoLoading(false)
           }
         }
-        setLeadsLoading(false)
-        return
       } else {
         const res = await fetch(`/campanhas/${id}.csv`, { cache: 'no-store' })
         if (res.status === 404) { setLeadsError('not_found'); return }
         if (!res.ok)            { setLeadsError('error'); return }
-        text = await res.text()
-      }
-      setLeads(parseLeadsCSV(text))
-
-      if (campanha?.codesSheetId) {
-        setProducaoLoading(true)
-        try {
-          const tabs = campanha.producaoTabs?.join(',') ?? ''
-          const prodParam = campanha.producaoSheetId
-            ? `&producaoSheetId=${campanha.producaoSheetId}&tabs=${tabs}`
-            : ''
-          const pRes = await fetch(
-            `/api/producao-leads?codesSheetId=${campanha.codesSheetId}${prodParam}`,
-            { cache: 'no-store' },
-          )
-          if (pRes.ok) setProducaoData(await pRes.json())
-        } catch { /* silently ignore */ } finally {
-          setProducaoLoading(false)
-        }
+        setLeadsTabs({ todos: parseLeadsCSV(await res.text()) })
       }
     } catch {
       setLeadsError('error')
@@ -457,16 +450,7 @@ export default function DisparosDashboardPage() {
 
   const leadsFiltrados = leads.filter(l => {
     const q = buscaLead.toLowerCase()
-    const matchBusca = !q || l.nome.toLowerCase().includes(q) || l.whatsapp.includes(q)
-    const s = l.status.toLowerCase()
-    const matchFiltro =
-      filtroLead === 'todos'           ? true :
-      filtroLead === 'respondeu'       ? !!l.respondeu_em :
-      filtroLead === 'lido'            ? s === 'read' :
-      filtroLead === 'entregue'        ? s === 'delivered' :
-      filtroLead === 'sem_atendimento' ? (!!l.entregue_em && !l.lido_em && !l.respondeu_em && s !== 'failed') :
-      filtroLead === 'falha'           ? s === 'failed' : true
-    return matchBusca && matchFiltro
+    return !q || l.nome.toLowerCase().includes(q) || l.whatsapp.includes(q)
   }).sort((a, b) => {
     if (!sortCol) return 0
     const dir = sortDir === 'asc' ? 1 : -1
