@@ -470,12 +470,12 @@ export default function DisparosDashboardPage() {
 
   // Se tem CSV carregado, calcula funil a partir dos dados reais
   const funnelFromCSV = leads.length > 0 ? {
-    total:     leads.length,
+    total:     c.total,
     enviados:  leads.filter(l => !!l.enviado_em).length,
     entregues: leads.filter(l => !!l.entregue_em).length,
     lidos:     leads.filter(l => !!l.lido_em).length,
     respostas: leads.filter(l => !!l.respondeu_em).length,
-    falhas:    leads.filter(l => l.status.toLowerCase() === 'failed').length,
+    falhas:    c.falhas,
   } : null
 
   const d = funnelFromCSV ?? c
