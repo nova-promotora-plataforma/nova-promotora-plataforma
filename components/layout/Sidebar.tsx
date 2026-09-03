@@ -20,7 +20,7 @@ const NAV = [
     { href: '/elegiveis', icon: UserCheck, label: 'Elegíveis s/ débito' },
   ]},
   { label: 'Leads', items: [
-    { href: '/leads/nexxo', icon: GitMerge, label: 'Nexxo × Parceiros' },
+    { href: '/leads/nexxo', icon: GitMerge, label: 'Base Fria de Leads' },
   ]},
   { label: 'Prospecção', items: [
     { href: '/possiveis-parceiros', icon: Radar, label: 'Possíveis Parceiros' },
