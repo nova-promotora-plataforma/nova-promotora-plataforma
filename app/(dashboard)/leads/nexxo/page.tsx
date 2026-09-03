@@ -271,7 +271,7 @@ interface LeadFria { data: string; nome: string; telefone: string; status: strin
 
 function DisparoView() {
   const [base,             setBase]             = useState('bot-alexandre')
-  const [ano,              setAno]              = useState('2026')
+  const [selectedAnos,     setSelectedAnos]     = useState<Set<string>>(new Set(['2026']))
   const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set(STATUS_POR_BASE['bot-alexandre']))
   const [allLeads,         setAllLeads]         = useState<LeadFria[]>([])
   const [loading,          setLoading]          = useState(false)
@@ -280,6 +280,16 @@ function DisparoView() {
   function changeBase(id: string) {
     setBase(id)
     setSelectedStatuses(new Set(STATUS_POR_BASE[id]))
+    setLoaded(false)
+    setAllLeads([])
+  }
+
+  function toggleAno(a: string) {
+    setSelectedAnos(prev => {
+      const next = new Set(prev)
+      next.has(a) ? next.delete(a) : next.add(a)
+      return next
+    })
     setLoaded(false)
     setAllLeads([])
   }
@@ -298,17 +308,21 @@ function DisparoView() {
   }
 
   const carregar = useCallback(async () => {
+    if (selectedAnos.size === 0) return
     setLoading(true)
     setLoaded(false)
     try {
-      const r = await fetch(`/api/leads/fria?base=${base}&ano=${ano}`, { cache: 'no-store' })
-      const d = await r.json()
-      setAllLeads(d.leads ?? [])
+      const results = await Promise.all(
+        Array.from(selectedAnos).map(a =>
+          fetch(`/api/leads/fria?base=${base}&ano=${a}`, { cache: 'no-store' }).then(r => r.json())
+        )
+      )
+      setAllLeads(results.flatMap(d => d.leads ?? []))
       setLoaded(true)
     } finally {
       setLoading(false)
     }
-  }, [base, ano])
+  }, [base, selectedAnos])
 
   const leads = allLeads.filter(l => selectedStatuses.has(l.status))
 
@@ -320,7 +334,7 @@ function DisparoView() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `leads-fria-${base}-${ano}.csv`
+    a.download = `leads-fria-${base}-${Array.from(selectedAnos).sort().join('-')}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -349,9 +363,9 @@ function DisparoView() {
           <span className="text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">Ano</span>
           <div className="flex gap-1">
             {ANOS.map(a => (
-              <button key={a} onClick={() => { setAno(a); setLoaded(false); setAllLeads([]) }}
+              <button key={a} onClick={() => toggleAno(a)}
                 className={cn('px-3 py-1.5 text-xs rounded-md border transition-nova',
-                  ano === a
+                  selectedAnos.has(a)
                     ? 'bg-[var(--btn-blue-bg)] border-[var(--btn-blue-border)] text-[var(--btn-blue-text)]'
                     : 'border-[var(--nova-border)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text)] hover:bg-white/[0.04]'
                 )}>{a}</button>
