@@ -35,6 +35,7 @@ const fmt = (v: number) =>
 const BASES = [
   { id: 'nexxo',         label: 'Nexxo',                    endpoint: '/api/leads/nexxo' },
   { id: 'bot-alexandre', label: 'Bot Alexandre Matos',       endpoint: '/api/leads/bot-alexandre' },
+  { id: 'bot',           label: 'Bot',                       endpoint: '/api/leads/bot' },
 ]
 
 // ─── Sub-componente: visão de uma base ───────────────────────────────────────
