@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { TopBar } from '@/components/layout/TopBar'
 import { Badge } from '@/components/ui/Badge'
 import { KPICard } from '@/components/ui/KPICard'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
@@ -242,6 +242,140 @@ function TodasAsBasesView({ bases }: { bases: Record<string, BaseData> }) {
   )
 }
 
+// ─── Base para Disparo ────────────────────────────────────────────────────────
+const BASES_DISPARO = [
+  { id: 'bot-alexandre', label: 'Bot Alexandre' },
+  { id: 'bot',           label: 'Bot' },
+  { id: 'nexxo',         label: 'Nexxo' },
+]
+const ANOS = ['2026', '2025', '2024']
+
+interface LeadFria { data: string; nome: string; telefone: string; status: string }
+
+function DisparoView() {
+  const [base,    setBase]    = useState('bot-alexandre')
+  const [ano,     setAno]     = useState('2026')
+  const [leads,   setLeads]   = useState<LeadFria[]>([])
+  const [loading, setLoading] = useState(false)
+  const [loaded,  setLoaded]  = useState(false)
+
+  const carregar = useCallback(async () => {
+    setLoading(true)
+    setLoaded(false)
+    try {
+      const r = await fetch(`/api/leads/fria?base=${base}&ano=${ano}`, { cache: 'no-store' })
+      const d = await r.json()
+      setLeads(d.leads ?? [])
+      setLoaded(true)
+    } finally {
+      setLoading(false)
+    }
+  }, [base, ano])
+
+  function exportCSV() {
+    const header = ['Data', 'Nome', 'Telefone', 'Status']
+    const rows = leads.map(l => [l.data, l.nome, l.telefone, l.status].map(v => `"${v.replace(/"/g, '""')}"`).join(','))
+    const csv = [header.join(','), ...rows].join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `leads-fria-${base}-${ano}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Filtros */}
+      <div className="flex flex-wrap gap-3 items-end">
+        <div className="flex flex-col gap-1">
+          <span className="text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">Base</span>
+          <div className="flex gap-1">
+            {BASES_DISPARO.map(b => (
+              <button key={b.id} onClick={() => { setBase(b.id); setLoaded(false) }}
+                className={cn('px-3 py-1.5 text-xs rounded-md border transition-nova',
+                  base === b.id
+                    ? 'bg-[var(--btn-blue-bg)] border-[var(--btn-blue-border)] text-[var(--btn-blue-text)]'
+                    : 'border-[var(--nova-border)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text)] hover:bg-white/[0.04]'
+                )}>{b.label}</button>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">Ano</span>
+          <div className="flex gap-1">
+            {ANOS.map(a => (
+              <button key={a} onClick={() => { setAno(a); setLoaded(false) }}
+                className={cn('px-3 py-1.5 text-xs rounded-md border transition-nova',
+                  ano === a
+                    ? 'bg-[var(--btn-blue-bg)] border-[var(--btn-blue-border)] text-[var(--btn-blue-text)]'
+                    : 'border-[var(--nova-border)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text)] hover:bg-white/[0.04]'
+                )}>{a}</button>
+            ))}
+          </div>
+        </div>
+        <button onClick={carregar} disabled={loading}
+          className="px-4 py-1.5 text-xs rounded-md border border-[var(--nova-border)] text-[var(--nova-text)] hover:bg-white/[0.04] transition-nova disabled:opacity-50">
+          {loading ? <Loader2 size={12} className="animate-spin" /> : 'Filtrar'}
+        </button>
+        {loaded && leads.length > 0 && (
+          <button onClick={exportCSV}
+            className="flex items-center gap-1.5 px-4 py-1.5 text-xs rounded-md border border-[var(--nova-border)] text-[var(--nova-text)] hover:bg-white/[0.04] transition-nova">
+            <Download size={12} /> Exportar CSV ({leads.length})
+          </button>
+        )}
+      </div>
+
+      {/* Resultado */}
+      {loaded && (
+        <div className="rounded-md border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--nova-border)]">
+            <p className="text-sm font-semibold text-[var(--nova-text)]">
+              {leads.length} leads para disparo
+            </p>
+            <p className="text-xs text-[var(--nova-text-dim)] mt-0.5">
+              {BASES_DISPARO.find(b => b.id === base)?.label} · {ano} · filtrados por status
+            </p>
+          </div>
+          {leads.length === 0 ? (
+            <div className="px-4 py-10 text-center text-sm text-[var(--nova-text-dim)]">
+              Nenhum lead encontrado para esta seleção
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-[var(--nova-bg-elev-2)]">
+                    {['Data', 'Nome', 'Telefone', 'Status'].map(h => (
+                      <th key={h} className="px-4 py-2.5 text-left text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--nova-border)]/50">
+                  {leads.slice(0, 500).map((l, i) => (
+                    <tr key={i} className="hover:bg-white/[0.02] transition-nova">
+                      <td className="px-4 py-2 text-xs text-[var(--nova-text-dim)] whitespace-nowrap">{l.data || '—'}</td>
+                      <td className="px-4 py-2 font-medium text-[var(--nova-text)] max-w-[220px] truncate">{l.nome || '—'}</td>
+                      <td className="px-4 py-2 text-xs text-[var(--nova-text-muted)] whitespace-nowrap font-mono">{l.telefone || '—'}</td>
+                      <td className="px-4 py-2 text-xs text-[var(--nova-text-dim)]">{l.status || <span className="italic opacity-50">em branco</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {leads.length > 500 && (
+                <div className="px-4 py-2.5 border-t border-[var(--nova-border)] text-xs text-[var(--nova-text-dim)]">
+                  Exibindo 500 de {leads.length} leads — exporte o CSV para ver todos
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function LeadsPage() {
   const [activeTab, setActiveTab] = useState('nexxo')
@@ -334,12 +468,24 @@ export default function LeadsPage() {
             >
               Todas as bases
             </button>
+            <button
+              onClick={() => setActiveTab('disparo')}
+              className={cn(
+                'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-nova',
+                activeTab === 'disparo'
+                  ? 'border-[var(--nova-blue)] text-[var(--nova-text)]'
+                  : 'border-transparent text-[var(--nova-text-dim)] hover:text-[var(--nova-text)]'
+              )}
+            >
+              Base para Disparo
+            </button>
           </div>
 
           {BASES.map(b => activeTab === b.id && (
             <BaseView key={b.id} data={bases[b.id]} label={b.label} />
           ))}
-          {activeTab === 'todas' && <TodasAsBasesView bases={bases} />}
+          {activeTab === 'todas'    && <TodasAsBasesView bases={bases} />}
+          {activeTab === 'disparo'  && <DisparoView />}
         </section>
 
       </main>
