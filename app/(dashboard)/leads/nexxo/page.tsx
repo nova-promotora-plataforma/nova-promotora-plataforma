@@ -250,14 +250,52 @@ const BASES_DISPARO = [
 ]
 const ANOS = ['2026', '2025', '2024']
 
+// '' = em branco
+const STATUS_POR_BASE: Record<string, string[]> = {
+  'bot-alexandre': ['', 'LEAD SEM RETORNO'],
+  'bot': [
+    '', 'LEAD SEM RETORNO', 'PERDIDO', 'PARCEIRO RECUSOU CADASTRO',
+    'NEGOCIAÇÃO EM ANDAMENTO', 'NÃO COMPARECEU NA REUNIÃO', 'PERDIDO (OUTRO)',
+    'PARCEIRO NAO TEM CNPJ', 'PARCEIRO COM FOCO EM PRODUTOS FORA DA GRADE',
+    'PARCEIRO SEM PLDFT', 'SEM RETORNO', 'PARCEIRO COM PRODUÇÃO -20K',
+    'PARCEIRO SEM ANEPS/FEBRAN',
+  ],
+  'nexxo': [
+    '', 'SEM RETORNO', 'PERDIDO (OUTRO)', 'NEGOCIAÇÃO EM ANDAMENTO',
+    'LEAD SEM RETORNO', 'NÃO TEM CERTIFICADO E NÃO TEM CNPJ e nunca atuou no mercado',
+    'NÃO TEM CERTIFICADO E NÃO TEM CNPJ',
+  ],
+}
+
 interface LeadFria { data: string; nome: string; telefone: string; status: string }
 
 function DisparoView() {
-  const [base,    setBase]    = useState('bot-alexandre')
-  const [ano,     setAno]     = useState('2026')
-  const [leads,   setLeads]   = useState<LeadFria[]>([])
-  const [loading, setLoading] = useState(false)
-  const [loaded,  setLoaded]  = useState(false)
+  const [base,             setBase]             = useState('bot-alexandre')
+  const [ano,              setAno]              = useState('2026')
+  const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set(STATUS_POR_BASE['bot-alexandre']))
+  const [allLeads,         setAllLeads]         = useState<LeadFria[]>([])
+  const [loading,          setLoading]          = useState(false)
+  const [loaded,           setLoaded]           = useState(false)
+
+  function changeBase(id: string) {
+    setBase(id)
+    setSelectedStatuses(new Set(STATUS_POR_BASE[id]))
+    setLoaded(false)
+    setAllLeads([])
+  }
+
+  function toggleStatus(s: string) {
+    setSelectedStatuses(prev => {
+      const next = new Set(prev)
+      next.has(s) ? next.delete(s) : next.add(s)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    const all = STATUS_POR_BASE[base]
+    setSelectedStatuses(prev => prev.size === all.length ? new Set() : new Set(all))
+  }
 
   const carregar = useCallback(async () => {
     setLoading(true)
@@ -265,16 +303,18 @@ function DisparoView() {
     try {
       const r = await fetch(`/api/leads/fria?base=${base}&ano=${ano}`, { cache: 'no-store' })
       const d = await r.json()
-      setLeads(d.leads ?? [])
+      setAllLeads(d.leads ?? [])
       setLoaded(true)
     } finally {
       setLoading(false)
     }
   }, [base, ano])
 
+  const leads = allLeads.filter(l => selectedStatuses.has(l.status))
+
   function exportCSV() {
     const header = ['Data', 'Nome', 'Telefone', 'Status']
-    const rows = leads.map(l => [l.data, l.nome, l.telefone, l.status].map(v => `"${v.replace(/"/g, '""')}"`).join(','))
+    const rows = leads.map(l => [l.data, l.nome, l.telefone, l.status].map(v => `"${(v ?? '').replace(/"/g, '""')}"`).join(','))
     const csv = [header.join(','), ...rows].join('\n')
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -285,15 +325,18 @@ function DisparoView() {
     URL.revokeObjectURL(url)
   }
 
+  const statusList = STATUS_POR_BASE[base] ?? []
+  const allSelected = selectedStatuses.size === statusList.length
+
   return (
     <div className="space-y-4">
-      {/* Filtros */}
+      {/* Filtros: base + ano */}
       <div className="flex flex-wrap gap-3 items-end">
         <div className="flex flex-col gap-1">
           <span className="text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">Base</span>
           <div className="flex gap-1">
             {BASES_DISPARO.map(b => (
-              <button key={b.id} onClick={() => { setBase(b.id); setLoaded(false) }}
+              <button key={b.id} onClick={() => changeBase(b.id)}
                 className={cn('px-3 py-1.5 text-xs rounded-md border transition-nova',
                   base === b.id
                     ? 'bg-[var(--btn-blue-bg)] border-[var(--btn-blue-border)] text-[var(--btn-blue-text)]'
@@ -306,7 +349,7 @@ function DisparoView() {
           <span className="text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">Ano</span>
           <div className="flex gap-1">
             {ANOS.map(a => (
-              <button key={a} onClick={() => { setAno(a); setLoaded(false) }}
+              <button key={a} onClick={() => { setAno(a); setLoaded(false); setAllLeads([]) }}
                 className={cn('px-3 py-1.5 text-xs rounded-md border transition-nova',
                   ano === a
                     ? 'bg-[var(--btn-blue-bg)] border-[var(--btn-blue-border)] text-[var(--btn-blue-text)]'
@@ -317,27 +360,51 @@ function DisparoView() {
         </div>
         <button onClick={carregar} disabled={loading}
           className="px-4 py-1.5 text-xs rounded-md border border-[var(--nova-border)] text-[var(--nova-text)] hover:bg-white/[0.04] transition-nova disabled:opacity-50">
-          {loading ? <Loader2 size={12} className="animate-spin" /> : 'Filtrar'}
+          {loading ? <Loader2 size={12} className="animate-spin" /> : 'Carregar'}
         </button>
-        {loaded && leads.length > 0 && (
-          <button onClick={exportCSV}
-            className="flex items-center gap-1.5 px-4 py-1.5 text-xs rounded-md border border-[var(--nova-border)] text-[var(--nova-text)] hover:bg-white/[0.04] transition-nova">
-            <Download size={12} /> Exportar CSV ({leads.length})
-          </button>
-        )}
       </div>
 
-      {/* Resultado */}
+      {/* Filtro de status */}
+      <div className="rounded-md border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">Status</span>
+          <button onClick={toggleAll} className="text-[0.625rem] text-[var(--nova-blue)] hover:opacity-70 transition-nova">
+            {allSelected ? 'Desmarcar todos' : 'Marcar todos'}
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {statusList.map(s => (
+            <button key={s} onClick={() => toggleStatus(s)}
+              className={cn('px-2.5 py-1 text-xs rounded-md border transition-nova',
+                selectedStatuses.has(s)
+                  ? 'bg-[var(--btn-blue-bg)] border-[var(--btn-blue-border)] text-[var(--btn-blue-text)]'
+                  : 'border-[var(--nova-border)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text)] hover:bg-white/[0.04]'
+              )}>
+              {s === '' ? 'Em branco' : s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Ação exportar */}
+      {loaded && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-[var(--nova-text-dim)]">
+            <span className="font-semibold text-[var(--nova-text)]">{leads.length}</span> leads selecionados
+            {allLeads.length !== leads.length && <span className="ml-1">de {allLeads.length} carregados</span>}
+          </p>
+          {leads.length > 0 && (
+            <button onClick={exportCSV}
+              className="flex items-center gap-1.5 px-4 py-1.5 text-xs rounded-md border border-[var(--nova-border)] text-[var(--nova-text)] hover:bg-white/[0.04] transition-nova">
+              <Download size={12} /> Exportar CSV ({leads.length})
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Tabela */}
       {loaded && (
         <div className="rounded-md border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] overflow-hidden">
-          <div className="px-4 py-3 border-b border-[var(--nova-border)]">
-            <p className="text-sm font-semibold text-[var(--nova-text)]">
-              {leads.length} leads para disparo
-            </p>
-            <p className="text-xs text-[var(--nova-text-dim)] mt-0.5">
-              {BASES_DISPARO.find(b => b.id === base)?.label} · {ano} · filtrados por status
-            </p>
-          </div>
           {leads.length === 0 ? (
             <div className="px-4 py-10 text-center text-sm text-[var(--nova-text-dim)]">
               Nenhum lead encontrado para esta seleção
@@ -358,14 +425,14 @@ function DisparoView() {
                       <td className="px-4 py-2 text-xs text-[var(--nova-text-dim)] whitespace-nowrap">{l.data || '—'}</td>
                       <td className="px-4 py-2 font-medium text-[var(--nova-text)] max-w-[220px] truncate">{l.nome || '—'}</td>
                       <td className="px-4 py-2 text-xs text-[var(--nova-text-muted)] whitespace-nowrap font-mono">{l.telefone || '—'}</td>
-                      <td className="px-4 py-2 text-xs text-[var(--nova-text-dim)]">{l.status || <span className="italic opacity-50">em branco</span>}</td>
+                      <td className="px-4 py-2 text-xs text-[var(--nova-text-dim)]">{l.status || <span className="italic opacity-50">Em branco</span>}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               {leads.length > 500 && (
                 <div className="px-4 py-2.5 border-t border-[var(--nova-border)] text-xs text-[var(--nova-text-dim)]">
-                  Exibindo 500 de {leads.length} leads — exporte o CSV para ver todos
+                  Exibindo 500 de {leads.length} — exporte o CSV para ver todos
                 </div>
               )}
             </div>
