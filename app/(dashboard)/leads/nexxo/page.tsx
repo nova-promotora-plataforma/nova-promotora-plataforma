@@ -184,16 +184,40 @@ function TodasAsBasesView({ bases }: { bases: Record<string, BaseData> }) {
   }
   const parceiros = Array.from(merged.values()).sort((a, b) => b.total - a.total)
 
+  function exportCSV() {
+    const header = ['Código', 'Nome', 'Cidade', 'UF', 'Último prod.', 'Total acumulado', 'Bases', 'Status']
+    const rows = parceiros.map(p => [
+      p.codigo, p.nome, p.cidade ?? '', p.uf ?? '', p.ultimaProd ?? '',
+      p.total.toFixed(2).replace('.', ','), p.origens.join(' | '), p.status,
+    ].map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
+    const csv = [header.join(','), ...rows].join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `todas-as-bases-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="space-y-5">
       <div className="rounded-md border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] overflow-hidden">
-        <div className="px-4 py-3 border-b border-[var(--nova-border)]">
-          <p className="text-sm font-semibold text-[var(--nova-text)]">
-            {parceiros.length} parceiros identificados em todas as bases
-          </p>
-          <p className="text-xs text-[var(--nova-text-dim)] mt-0.5">
-            Parceiros presentes em múltiplas bases aparecem uma vez com produção somada · ordenados por total acumulado
-          </p>
+        <div className="px-4 py-3 border-b border-[var(--nova-border)] flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-[var(--nova-text)]">
+              {parceiros.length} parceiros identificados em todas as bases
+            </p>
+            <p className="text-xs text-[var(--nova-text-dim)] mt-0.5">
+              Parceiros presentes em múltiplas bases aparecem uma vez com produção somada · ordenados por total acumulado
+            </p>
+          </div>
+          {parceiros.length > 0 && (
+            <button onClick={exportCSV}
+              className="flex items-center gap-1.5 px-4 py-1.5 text-xs rounded-md border border-[var(--nova-border)] text-[var(--nova-text)] hover:bg-white/[0.04] transition-nova flex-shrink-0">
+              <Download size={12} /> Exportar base ({parceiros.length})
+            </button>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
