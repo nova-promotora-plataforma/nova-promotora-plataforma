@@ -294,16 +294,27 @@ const STATUS_POR_BASE: Record<string, string[]> = {
 interface LeadFria { data: string; nome: string; telefone: string; status: string }
 
 function DisparoView() {
-  const [base,             setBase]             = useState('bot-alexandre')
+  const [selectedBases,    setSelectedBases]    = useState<Set<string>>(new Set(['bot-alexandre']))
   const [selectedAnos,     setSelectedAnos]     = useState<Set<string>>(new Set(['2026']))
   const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set(STATUS_POR_BASE['bot-alexandre']))
   const [allLeads,         setAllLeads]         = useState<LeadFria[]>([])
   const [loading,          setLoading]          = useState(false)
   const [loaded,           setLoaded]           = useState(false)
 
-  function changeBase(id: string) {
-    setBase(id)
-    setSelectedStatuses(new Set(STATUS_POR_BASE[id]))
+  function getStatusList(bases: Set<string>): string[] {
+    const all = new Set<string>()
+    bases.forEach(b => (STATUS_POR_BASE[b] ?? []).forEach(s => all.add(s)))
+    return Array.from(all)
+  }
+
+  function toggleBase(id: string) {
+    setSelectedBases(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      const newStatusList = getStatusList(next)
+      setSelectedStatuses(new Set(newStatusList))
+      return next
+    })
     setLoaded(false)
     setAllLeads([])
   }
@@ -327,18 +338,20 @@ function DisparoView() {
   }
 
   function toggleAll() {
-    const all = STATUS_POR_BASE[base]
+    const all = getStatusList(selectedBases)
     setSelectedStatuses(prev => prev.size === all.length ? new Set() : new Set(all))
   }
 
   const carregar = useCallback(async () => {
-    if (selectedAnos.size === 0) return
+    if (selectedAnos.size === 0 || selectedBases.size === 0) return
     setLoading(true)
     setLoaded(false)
     try {
       const results = await Promise.all(
-        Array.from(selectedAnos).map(a =>
-          fetch(`/api/leads/fria?base=${base}&ano=${a}`, { cache: 'no-store' }).then(r => r.json())
+        Array.from(selectedBases).flatMap(b =>
+          Array.from(selectedAnos).map(a =>
+            fetch(`/api/leads/fria?base=${b}&ano=${a}`, { cache: 'no-store' }).then(r => r.json())
+          )
         )
       )
       setAllLeads(results.flatMap(d => d.leads ?? []))
@@ -346,7 +359,7 @@ function DisparoView() {
     } finally {
       setLoading(false)
     }
-  }, [base, selectedAnos])
+  }, [selectedBases, selectedAnos])
 
   const leads = allLeads.filter(l => selectedStatuses.has(l.status))
 
@@ -358,12 +371,12 @@ function DisparoView() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `leads-fria-${base}-${Array.from(selectedAnos).sort().join('-')}.csv`
+    a.download = `leads-fria-${Array.from(selectedBases).sort().join('-')}-${Array.from(selectedAnos).sort().join('-')}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
 
-  const statusList = STATUS_POR_BASE[base] ?? []
+  const statusList = getStatusList(selectedBases)
   const allSelected = selectedStatuses.size === statusList.length
 
   return (
@@ -374,9 +387,9 @@ function DisparoView() {
           <span className="text-[0.625rem] font-medium uppercase tracking-wider text-[var(--nova-text-dim)]">Base</span>
           <div className="flex gap-1">
             {BASES_DISPARO.map(b => (
-              <button key={b.id} onClick={() => changeBase(b.id)}
+              <button key={b.id} onClick={() => toggleBase(b.id)}
                 className={cn('px-3 py-1.5 text-xs rounded-md border transition-nova',
-                  base === b.id
+                  selectedBases.has(b.id)
                     ? 'bg-[var(--btn-blue-bg)] border-[var(--btn-blue-border)] text-[var(--btn-blue-text)]'
                     : 'border-[var(--nova-border)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text)] hover:bg-white/[0.04]'
                 )}>{b.label}</button>
