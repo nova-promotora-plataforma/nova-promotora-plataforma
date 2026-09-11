@@ -129,6 +129,66 @@ enum ConfidenceLevel {
   LOW
 }
 
+// ─── Propostas (base de produção) ────────────────────────────────────────────
+
+model Proposal {
+  ff             String    @id                         // chave única da proposta
+  ade            String?
+  codParceiro    String    @map("cod_parceiro")
+  banco          String?
+  convenio       String?
+  tipoOperacao   String?   @map("tipo_operacao")
+  parcela        Decimal?  @db.Decimal(12, 2)
+  producao       Decimal   @default(0) @db.Decimal(12, 2)
+  dataCadastro   DateTime? @map("data_cadastro") @db.Date
+  dataPgtoBanco  DateTime? @map("data_pgto_banco") @db.Date
+  dataPgtoCms    DateTime? @map("data_pgto_cms") @db.Date
+  arquivoOrigem  String?   @map("arquivo_origem")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@index([codParceiro, dataPgtoCms])
+  @@index([dataPgtoCms])
+  @@index([banco])
+  @@index([convenio])
+  @@map("proposals")
+}
+
+// ─── Drive Config e Sync ──────────────────────────────────────────────────────
+
+model DriveConfig {
+  id          String    @id @default(uuid())
+  folderId    String    @map("folder_id")
+  lastSyncAt  DateTime? @map("last_sync_at")
+  lastFileId  String?   @map("last_file_id")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("drive_config")
+}
+
+model SyncExecution {
+  id           String     @id @default(uuid())
+  startedAt    DateTime   @default(now()) @map("started_at")
+  finishedAt   DateTime?  @map("finished_at")
+  fileName     String?    @map("file_name")
+  fileId       String?    @map("file_id")
+  linhasLidas  Int        @default(0) @map("linhas_lidas")
+  novos        Int        @default(0)
+  atualizados  Int        @default(0)
+  status       SyncStatus @default(RUNNING)
+  erro         String?
+
+  @@index([startedAt])
+  @@map("sync_executions")
+}
+
+enum SyncStatus {
+  RUNNING
+  SUCCESS
+  ERROR
+  SKIPPED
+}
+
 // ─── Campanhas ───────────────────────────────────────────────────────────────
 
 model Campaign {
