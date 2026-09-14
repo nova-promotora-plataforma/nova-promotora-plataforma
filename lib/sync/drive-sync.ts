@@ -48,11 +48,16 @@ export async function runDriveSync(folderId: string): Promise<{
     const result = await processStream(stream, isGzip)
 
     // Atualiza config
-    await prisma.driveConfig.upsert({
-      where: { id: config?.id ?? '' },
-      create: { folderId, lastSyncAt: new Date(), lastFileId: latest.id },
-      update: { lastSyncAt: new Date(), lastFileId: latest.id },
-    })
+    if (config) {
+      await prisma.driveConfig.update({
+        where: { id: config.id },
+        data: { lastSyncAt: new Date(), lastFileId: latest.id },
+      })
+    } else {
+      await prisma.driveConfig.create({
+        data: { folderId, lastSyncAt: new Date(), lastFileId: latest.id },
+      })
+    }
 
     await prisma.syncExecution.update({
       where: { id: exec.id },

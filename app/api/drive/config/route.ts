@@ -24,11 +24,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Link inválido' }, { status: 400 })
   }
 
-  const config = await prisma.driveConfig.upsert({
-    where: { id: (await prisma.driveConfig.findFirst())?.id ?? '' },
-    create: { folderId },
-    update: { folderId },
-  })
+  const existing = await prisma.driveConfig.findFirst()
+  const config = existing
+    ? await prisma.driveConfig.update({ where: { id: existing.id }, data: { folderId } })
+    : await prisma.driveConfig.create({ data: { folderId } })
 
   return NextResponse.json({ config })
 }
