@@ -294,6 +294,18 @@ const CAMPANHAS: Campanha[] = [
     sheetId: '1Lagif8zuyqPkvYXJyzT1cm8gekJZMCELNa1snERzyQ8',
     codesSheetId: '1dIFybWP5hMHPKRNaXrIlNlNkJU_Jcn4XwZfEzWNeN_M',
   },
+  {
+    id: 'leads-fria-bot-bot-alexandre-nexxo-2026',
+    nome: 'leads-fria-bot-bot-alexandre-nexxo-2026',
+    data: '14/09/2026',
+    status: 'Concluída',
+    total: 767,
+    enviados: 671,
+    entregues: 603,
+    lidos: 144,
+    respostas: 60,
+    falhas: 96,
+  },
 ]
 
 const pct = (num: number, den: number) =>
