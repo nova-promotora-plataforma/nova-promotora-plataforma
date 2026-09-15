@@ -1,10 +1,10 @@
 import { prisma } from '@/lib/db/client'
-import { listFolderFiles, downloadFileStream } from '@/lib/drive/client'
+import { getFileMetadata, downloadFileStream } from '@/lib/drive/client'
 import { processStream } from './process-csv'
 
-const CSV_PATTERN = /\.(csv|csv\.gz)$/i
+const FILE_ID = '1fSM0Mj3UupYztA2Bp5Er9cS6YMG-NaFw'
 
-export async function runDriveSync(folderId: string): Promise<{
+export async function runDriveSync(): Promise<{
   status: 'success' | 'skipped' | 'error'
   message: string
   novos?: number
@@ -16,46 +16,30 @@ export async function runDriveSync(folderId: string): Promise<{
   })
 
   try {
-    const files = await listFolderFiles(folderId)
-    const csvFiles = files.filter(f => CSV_PATTERN.test(f.name))
+    const file = await getFileMetadata(FILE_ID)
 
-    if (!csvFiles.length) {
+    // Verifica se já foi processado e não mudou
+    const config = await prisma.driveConfig.findFirst()
+    if (config?.lastSyncAt && new Date(file.modifiedTime) <= config.lastSyncAt) {
       await prisma.syncExecution.update({
         where: { id: exec.id },
-        data: { status: 'SKIPPED', finishedAt: new Date(), erro: 'Nenhum CSV encontrado na pasta' },
+        data: { status: 'SKIPPED', finishedAt: new Date(), fileName: file.name, fileId: FILE_ID },
       })
-      return { status: 'skipped', message: 'Nenhum CSV encontrado na pasta' }
+      return { status: 'skipped', message: `Arquivo não foi modificado desde a última sync` }
     }
 
-    // Pega o mais recente
-    const latest = csvFiles[0]
-
-    // Verifica se já foi processado
-    const config = await prisma.driveConfig.findFirst()
-    if (config?.lastFileId === latest.id) {
-      const modifiedSince = config.lastSyncAt && new Date(latest.modifiedTime) <= config.lastSyncAt
-      if (modifiedSince) {
-        await prisma.syncExecution.update({
-          where: { id: exec.id },
-          data: { status: 'SKIPPED', finishedAt: new Date(), fileName: latest.name, fileId: latest.id },
-        })
-        return { status: 'skipped', message: `Arquivo ${latest.name} não foi modificado desde a última sync` }
-      }
-    }
-
-    const isGzip = latest.name.endsWith('.gz')
-    const stream = await downloadFileStream(latest.id)
+    const isGzip = file.name.endsWith('.gz')
+    const stream = await downloadFileStream(FILE_ID)
     const result = await processStream(stream, isGzip)
 
-    // Atualiza config
     if (config) {
       await prisma.driveConfig.update({
         where: { id: config.id },
-        data: { lastSyncAt: new Date(), lastFileId: latest.id },
+        data: { lastSyncAt: new Date(), lastFileId: FILE_ID },
       })
     } else {
       await prisma.driveConfig.create({
-        data: { folderId, lastSyncAt: new Date(), lastFileId: latest.id },
+        data: { folderId: FILE_ID, lastSyncAt: new Date(), lastFileId: FILE_ID },
       })
     }
 
@@ -64,8 +48,8 @@ export async function runDriveSync(folderId: string): Promise<{
       data: {
         status: 'SUCCESS',
         finishedAt: new Date(),
-        fileName: latest.name,
-        fileId: latest.id,
+        fileName: file.name,
+        fileId: FILE_ID,
         linhasLidas: result.linhasLidas,
         novos: result.novos,
         atualizados: result.atualizados,
@@ -74,7 +58,7 @@ export async function runDriveSync(folderId: string): Promise<{
 
     return {
       status: 'success',
-      message: `Sync concluído: ${latest.name}`,
+      message: `Sync concluído: ${file.name}`,
       ...result,
     }
   } catch (err) {

@@ -32,6 +32,15 @@ export async function listFolderFiles(folderId: string): Promise<DriveFile[]> {
   return (res.data.files ?? []) as DriveFile[]
 }
 
+export async function getFileMetadata(fileId: string): Promise<DriveFile> {
+  const drive = getDrive()
+  const res = await drive.files.get({
+    fileId,
+    fields: 'id, name, modifiedTime, size',
+  })
+  return res.data as DriveFile
+}
+
 export async function downloadFileStream(fileId: string): Promise<NodeJS.ReadableStream> {
   const drive = getDrive()
   const res = await drive.files.get(

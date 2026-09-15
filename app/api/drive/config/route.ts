@@ -51,7 +51,7 @@ export async function PUT(req: NextRequest) {
   }
 
   if (action === 'sync') {
-    const result = await runDriveSync(config.folderId)
+    const result = await runDriveSync()
     return NextResponse.json(result)
   }
 
