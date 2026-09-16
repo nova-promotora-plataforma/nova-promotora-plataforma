@@ -1,3 +1,4 @@
+﻿export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { fetchSheetByGid, parseCSV } from '@/lib/sheets/client'
 import { norm, parseBRL, toTitleCase, MONTH_MAP } from '@/lib/sheets/partners'

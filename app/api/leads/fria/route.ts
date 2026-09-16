@@ -1,3 +1,4 @@
+﻿export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { parseCSV } from '@/lib/sheets/client'
 import { norm } from '@/lib/sheets/partners'

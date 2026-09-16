@@ -1,3 +1,4 @@
+﻿export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/client'
 
@@ -83,7 +84,7 @@ export async function GET(req: NextRequest) {
     return true
   })
 
-  // Ordenação
+  // OrdenaÃ§Ã£o
   filtered.sort((a, b) => {
     let diff = 0
     if      (sortBy === 'totalProducao') diff = a.totalProducao - b.totalProducao

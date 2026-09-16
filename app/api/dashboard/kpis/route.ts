@@ -1,3 +1,4 @@
+﻿export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { fetchAllPartners, MONTH_MAP } from '@/lib/sheets/partners'
 
@@ -11,7 +12,7 @@ export async function GET() {
   let ativos = 0, producaoTotal = 0
   const ufCount: Record<string, number> = {}
 
-  // Coletar todos os meses únicos para calcular os últimos 12
+  // Coletar todos os meses Ãºnicos para calcular os Ãºltimos 12
   const allMonthKeys = new Set<string>()
   for (const p of eligible) {
     Object.keys(p.monthlyData).forEach(k => allMonthKeys.add(k))
@@ -49,8 +50,8 @@ export async function GET() {
     ) {
       alertPartners.push({
         nome:      p.nome,
-        uf:        p.uf ?? '—',
-        lastMonth: p.lastProductionMonth ?? '—',
+        uf:        p.uf ?? 'â€”',
+        lastMonth: p.lastProductionMonth ?? 'â€”',
         total:     p.totalProducao,
         status:    'INATIVO',
       })
