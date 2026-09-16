@@ -19,7 +19,14 @@ interface RawRow {
 
 function parseDate(s: string): Date | undefined {
   if (!s || s === '0000-00-00') return undefined
-  const d = new Date(s.trim())
+  const t = s.trim()
+  // DD/MM/YYYY ou DD/MM/YYYY HH:MM:SS
+  const br = t.match(/^(\d{2})\/(\d{2})\/(\d{4})/)
+  if (br) {
+    const d = new Date(`${br[3]}-${br[2]}-${br[1]}`)
+    return isNaN(d.getTime()) ? undefined : d
+  }
+  const d = new Date(t)
   return isNaN(d.getTime()) ? undefined : d
 }
 
