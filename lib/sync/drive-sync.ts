@@ -4,7 +4,7 @@ import { processStream } from './process-csv'
 
 const FILE_ID = '1fSM0Mj3UupYztA2Bp5Er9cS6YMG-NaFw'
 
-export async function runDriveSync(): Promise<{
+export async function runDriveSync(force = false): Promise<{
   status: 'success' | 'skipped' | 'error'
   message: string
   novos?: number
@@ -20,7 +20,7 @@ export async function runDriveSync(): Promise<{
 
     // Verifica se já foi processado e não mudou
     const config = await prisma.driveConfig.findFirst()
-    if (config?.lastSyncAt && new Date(file.modifiedTime) <= config.lastSyncAt) {
+    if (!force && config?.lastSyncAt && new Date(file.modifiedTime) <= config.lastSyncAt) {
       await prisma.syncExecution.update({
         where: { id: exec.id },
         data: { status: 'SKIPPED', finishedAt: new Date(), fileName: file.name, fileId: FILE_ID },
