@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/client'
 import { listFolderFiles, extractFolderId } from '@/lib/drive/client'
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ config })
 }
 
-// POST /api/drive/test — testa conexão e lista arquivos da pasta
+// PUT /api/drive/config — testa conexão ou dispara sync manual
 export async function PUT(req: NextRequest) {
   const { action } = await req.json()
 
