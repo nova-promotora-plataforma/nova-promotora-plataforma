@@ -297,7 +297,7 @@ const CAMPANHAS: Campanha[] = [
   {
     id: 'leads-fria-bot-bot-alexandre-nexxo-2024',
     nome: 'leads-fria-bot-bot-alexandre-nexxo-2024',
-    data: '18/09/2026',
+    data: '17/09/2026',
     status: 'Concluída',
     total: 806,
     enviados: 607,
