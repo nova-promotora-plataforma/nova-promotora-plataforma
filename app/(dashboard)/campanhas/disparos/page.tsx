@@ -295,6 +295,18 @@ const CAMPANHAS: Campanha[] = [
     codesSheetId: '1dIFybWP5hMHPKRNaXrIlNlNkJU_Jcn4XwZfEzWNeN_M',
   },
   {
+    id: 'leads-fria-bot-bot-alexandre-nexxo-2024',
+    nome: 'leads-fria-bot-bot-alexandre-nexxo-2024',
+    data: '18/09/2026',
+    status: 'Concluída',
+    total: 806,
+    enviados: 607,
+    entregues: 547,
+    lidos: 151,
+    respostas: 63,
+    falhas: 199,
+  },
+  {
     id: 'leads-fria-bot-bot-alexandre-nexxo-2025',
     nome: 'leads-fria-bot-bot-alexandre-nexxo-2025',
     data: '15/09/2026',
