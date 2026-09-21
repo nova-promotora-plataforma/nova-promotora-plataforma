@@ -1,71 +1,123 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
-import { fetchAllPartners, MONTH_MAP } from '@/lib/sheets/partners'
+import { prisma } from '@/lib/db/client'
+
+const ACTIVE_DAYS = 60
 
 export async function GET() {
-  const partners = await fetchAllPartners()
-  const eligible = partners.filter(p => p.isEligible)
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - ACTIVE_DAYS)
 
-  const now            = new Date()
-  const ninetyDaysAgo = new Date(); ninetyDaysAgo.setDate(now.getDate() - 90)
+  const ninetyDaysAgo = new Date()
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
 
-  let ativos = 0, producaoTotal = 0
-  const ufCount: Record<string, number> = {}
+  // Agregação por parceiro: total de produção e última produção
+  const partnerAgg = await prisma.$queryRaw<{
+    cod_parceiro:    string
+    total_producao:  number
+    ultima_producao: Date | null
+  }[]>`
+    SELECT
+      cod_parceiro,
+      SUM(producao)::float    AS total_producao,
+      MAX(data_pgto_cms)      AS ultima_producao
+    FROM proposals
+    WHERE producao > 0
+    GROUP BY cod_parceiro
+  `
 
-  // Coletar todos os meses Ãºnicos para calcular os Ãºltimos 12
-  const allMonthKeys = new Set<string>()
-  for (const p of eligible) {
-    Object.keys(p.monthlyData).forEach(k => allMonthKeys.add(k))
+  let eligible      = 0
+  let ativos        = 0
+  let producaoTotal = 0
+
+  for (const p of partnerAgg) {
+    eligible++
+    producaoTotal += p.total_producao ?? 0
+    if (p.ultima_producao && p.ultima_producao >= cutoff) ativos++
   }
-  const sortedMonths = Array.from(allMonthKeys)
-    .map(label => {
-      const [mon, yr] = label.split('/')
-      const m = MONTH_MAP[mon]
-      return m ? { label, ts: parseInt(`20${yr}${m}`) } : null
-    })
-    .filter(Boolean)
-    .sort((a, b) => a!.ts - b!.ts) as { label: string; ts: number }[]
 
-  const last12 = sortedMonths.slice(-12)
-  const monthlyProd: Record<string, number> = {}
-  last12.forEach(m => { monthlyProd[m.label] = 0 })
+  // Produção mensal — últimos 13 meses
+  const monthlyRaw = await prisma.$queryRaw<{
+    month_date: Date
+    amount:     number
+  }[]>`
+    SELECT
+      DATE_TRUNC('month', data_pgto_cms) AS month_date,
+      SUM(producao)::float               AS amount
+    FROM proposals
+    WHERE data_pgto_cms >= NOW() - INTERVAL '13 months'
+      AND data_pgto_cms IS NOT NULL
+    GROUP BY 1
+    ORDER BY 1
+  `
 
-  const alertPartners: { nome: string; uf: string; lastMonth: string; total: number; status: string }[] = []
+  const MONTH_NAMES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
+  const productionData = monthlyRaw.map(r => {
+    const d   = new Date(r.month_date)
+    const mon = MONTH_NAMES[d.getUTCMonth()]
+    const yr  = String(d.getUTCFullYear()).slice(2)
+    return { month: `${mon}/${yr}`, amount: Math.round(r.amount ?? 0) }
+  })
 
-  for (const p of eligible) {
-    if (p.status === 'ATIVO') ativos++
-    producaoTotal += p.totalProducao
+  // Top 6 UFs por número de parceiros (via tabela partners)
+  const ufRaw = await prisma.$queryRaw<{ uf: string; cnt: number }[]>`
+    SELECT pt.uf, COUNT(DISTINCT pr.cod_parceiro)::int AS cnt
+    FROM proposals pr
+    JOIN partners pt ON pt.codigo = pr.cod_parceiro
+    WHERE pt.uf IS NOT NULL AND pt.uf != ''
+    GROUP BY pt.uf
+    ORDER BY cnt DESC
+    LIMIT 6
+  `
+  const ufTop6 = ufRaw.map(r => ({ label: r.uf, value: r.cnt }))
 
-    if (p.uf) ufCount[p.uf] = (ufCount[p.uf] ?? 0) + 1
+  // Parceiros em alerta de inatividade (última produção entre 30 e 90 dias atrás)
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-    last12.forEach(m => {
-      monthlyProd[m.label] += p.monthlyData[m.label] ?? 0
-    })
+  const alertRaw = await prisma.$queryRaw<{
+    cod_parceiro:    string
+    nome:            string | null
+    uf:              string | null
+    ultima_producao: Date | null
+    total_producao:  number
+  }[]>`
+    SELECT
+      pr.cod_parceiro,
+      pt.nome,
+      pt.uf,
+      MAX(pr.data_pgto_cms)   AS ultima_producao,
+      SUM(pr.producao)::float AS total_producao
+    FROM proposals pr
+    LEFT JOIN partners pt ON pt.codigo = pr.cod_parceiro
+    GROUP BY pr.cod_parceiro, pt.nome, pt.uf
+    HAVING MAX(pr.data_pgto_cms) >= ${ninetyDaysAgo}
+       AND MAX(pr.data_pgto_cms) <  ${thirtyDaysAgo}
+    ORDER BY SUM(pr.producao) DESC
+    LIMIT 15
+  `
 
-    if (
-      p.status === 'INATIVO' &&
-      p.lastProductionDate &&
-      p.lastProductionDate >= ninetyDaysAgo &&
-      alertPartners.length < 15
-    ) {
-      alertPartners.push({
-        nome:      p.nome,
-        uf:        p.uf ?? 'â€”',
-        lastMonth: p.lastProductionMonth ?? 'â€”',
-        total:     p.totalProducao,
-        status:    'INATIVO',
-      })
+  const alertPartners = alertRaw.map(r => {
+    const d    = r.ultima_producao ? new Date(r.ultima_producao) : null
+    const mon  = d ? MONTH_NAMES[d.getUTCMonth()] : '—'
+    const yr   = d ? String(d.getUTCFullYear()).slice(2) : ''
+    return {
+      nome:      r.nome ?? r.cod_parceiro,
+      uf:        r.uf ?? '—',
+      lastMonth: d ? `${mon}/${yr}` : '—',
+      total:     Math.round(r.total_producao ?? 0),
+      status:    'INATIVO',
     }
-  }
+  })
 
   return NextResponse.json({
-    eligible:       eligible.length,
+    eligible,
     ativos,
     producaoTotal:  Math.round(producaoTotal),
     mediaAtivo:     ativos > 0 ? Math.round(producaoTotal / ativos) : 0,
-    taxaAtivos:     eligible.length > 0 ? ((ativos / eligible.length) * 100).toFixed(1) : '0',
-    productionData: last12.map(m => ({ month: m.label, amount: Math.round(monthlyProd[m.label]) })),
-    ufTop6:         Object.entries(ufCount).sort((a,b) => b[1]-a[1]).slice(0,6).map(([label,value]) => ({ label, value })),
+    taxaAtivos:     eligible > 0 ? ((ativos / eligible) * 100).toFixed(1) : '0',
+    productionData,
+    ufTop6,
     alertPartners,
   })
 }

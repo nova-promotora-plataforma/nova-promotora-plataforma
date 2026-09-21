@@ -26,6 +26,8 @@ interface ApiResponse {
   total: number
   page: number
   pages: number
+  totalAtivos: number
+  totalInativos: number
 }
 
 const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO']
@@ -36,12 +38,14 @@ function formatCurrency(v: number) {
 
 
 export default function ParceirosPage() {
-  const [data, setData]       = useState<Partner[]>([])
-  const [total, setTotal]     = useState(0)
-  const [pages, setPages]     = useState(1)
-  const [page, setPage]       = useState(1)
-  const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState<string[]>([])
+  const [data, setData]             = useState<Partner[]>([])
+  const [total, setTotal]           = useState(0)
+  const [pages, setPages]           = useState(1)
+  const [page, setPage]             = useState(1)
+  const [loading, setLoading]       = useState(true)
+  const [selected, setSelected]     = useState<string[]>([])
+  const [totalAtivos, setTotalAtivos]     = useState(0)
+  const [totalInativos, setTotalInativos] = useState(0)
 
   // filtros
   const [busca, setBusca]   = useState('')
@@ -83,6 +87,8 @@ export default function ParceirosPage() {
       setTotal(json.total)
       setPages(json.pages)
       setPage(json.page)
+      setTotalAtivos(json.totalAtivos ?? 0)
+      setTotalInativos(json.totalInativos ?? 0)
     } catch {
       setData([])
     } finally {
@@ -138,6 +144,40 @@ export default function ParceirosPage() {
 
       <main className="flex-1 overflow-auto p-5">
 
+        {/* Cards de resumo */}
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          <button
+            onClick={() => { setStatus(s => s === 'ATIVO' ? '' : 'ATIVO'); setApplied(a => ({ ...a, status: a.status === 'ATIVO' ? '' : 'ATIVO' })) }}
+            className={cn(
+              'text-left rounded-md border p-4 transition-nova cursor-pointer',
+              applied.status === 'ATIVO'
+                ? 'border-emerald-500/50 bg-emerald-500/10'
+                : 'border-[var(--nova-border)] bg-[var(--nova-bg-elev)] hover:border-emerald-500/30',
+            )}
+          >
+            <p className="text-xs font-medium text-[var(--nova-text-dim)] mb-1">Ativos</p>
+            <p className={cn('text-2xl font-bold', applied.status === 'ATIVO' ? 'text-emerald-400' : 'text-emerald-500')}>
+              {loading ? '—' : totalAtivos.toLocaleString('pt-BR')}
+            </p>
+            <p className="text-xs text-[var(--nova-text-dim)] mt-0.5">pagamento nos últimos 60 dias</p>
+          </button>
+          <button
+            onClick={() => { setStatus(s => s === 'INATIVO' ? '' : 'INATIVO'); setApplied(a => ({ ...a, status: a.status === 'INATIVO' ? '' : 'INATIVO' })) }}
+            className={cn(
+              'text-left rounded-md border p-4 transition-nova cursor-pointer',
+              applied.status === 'INATIVO'
+                ? 'border-amber-500/50 bg-amber-500/10'
+                : 'border-[var(--nova-border)] bg-[var(--nova-bg-elev)] hover:border-amber-500/30',
+            )}
+          >
+            <p className="text-xs font-medium text-[var(--nova-text-dim)] mb-1">Inativos</p>
+            <p className={cn('text-2xl font-bold', applied.status === 'INATIVO' ? 'text-amber-400' : 'text-amber-500')}>
+              {loading ? '—' : totalInativos.toLocaleString('pt-BR')}
+            </p>
+            <p className="text-xs text-[var(--nova-text-dim)] mt-0.5">sem pagamento há mais de 60 dias</p>
+          </button>
+        </div>
+
         {/* Filtros */}
         <div className="flex flex-wrap gap-2 mb-4" role="search" aria-label="Filtros de parceiros">
           <input
@@ -154,8 +194,8 @@ export default function ParceirosPage() {
             )}
           />
           <select
-            value={status}
-            onChange={e => setStatus(e.target.value)}
+            value={applied.status}
+            onChange={e => { setStatus(e.target.value); setApplied(a => ({ ...a, status: e.target.value })) }}
             aria-label="Filtrar por status"
             className={cn(
               'rounded-sm border bg-[var(--nova-bg-elev)] px-3 py-2 text-sm text-[var(--nova-text)]',
@@ -194,12 +234,7 @@ export default function ParceirosPage() {
 
         {/* Contagem */}
         <p className="text-xs text-[var(--nova-text-dim)] mb-3">
-          {loading ? 'Carregando…' : (
-            <>
-              {total.toLocaleString('pt-BR')} parceiros elegíveis ·{' '}
-              <span className="text-[var(--btn-blue-text)]">filtro ativo: is_eligible = true</span>
-            </>
-          )}
+          {loading ? 'Carregando…' : `${total.toLocaleString('pt-BR')} parceiros${applied.status ? ` ${applied.status === 'ATIVO' ? 'ativos' : 'inativos'}` : ''}`}
         </p>
 
         {/* Tabela */}

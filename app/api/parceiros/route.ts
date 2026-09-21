@@ -97,9 +97,12 @@ export async function GET(req: NextRequest) {
     return sortDir === 'desc' ? -diff : diff
   })
 
+  const totalAtivos   = enriched.filter(p => p.status === 'ATIVO').length
+  const totalInativos = enriched.filter(p => p.status === 'INATIVO').length
+
   const total = filtered.length
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const slice = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  return NextResponse.json({ data: slice, total, page, pages, sortBy, sortDir })
+  return NextResponse.json({ data: slice, total, page, pages, sortBy, sortDir, totalAtivos, totalInativos })
 }
