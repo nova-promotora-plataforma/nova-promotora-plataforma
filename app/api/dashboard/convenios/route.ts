@@ -127,7 +127,7 @@ export async function GET() {
   }
 
   for (const tab of keys) {
-    for (const [codigo, p] of partnerByTab[tab]) {
+    for (const [codigo, p] of Array.from(partnerByTab[tab])) {
       const isAtivo = p.ultimaProd ? p.ultimaProd >= cutoff : false
       stats[tab].totalProducao += p.total
       if (isAtivo) stats[tab].ativos++
