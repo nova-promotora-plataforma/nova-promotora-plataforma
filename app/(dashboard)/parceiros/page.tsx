@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { TopBar } from '@/components/layout/TopBar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { DonutChart } from '@/components/charts/DonutChart'
 import { Megaphone, Eye, ChevronLeft, ChevronRight, Filter, Loader2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -38,6 +39,15 @@ interface ApiResponse {
   totalInativos: number
 }
 
+interface ResumoSlice { label: string; parceiros: number; producao: number; color: string }
+interface Resumo {
+  totalAtivos: number
+  totalInativos: number
+  total: number
+  porConvenio: ResumoSlice[]
+  porBanco: ResumoSlice[]
+}
+
 const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO']
 
 function formatCurrency(v: number) {
@@ -59,6 +69,7 @@ export default function ParceirosPage() {
   const [selected, setSelected] = useState<string[]>([])
   const [totalAtivos, setTotalAtivos]     = useState(0)
   const [totalInativos, setTotalInativos] = useState(0)
+  const [resumo, setResumo] = useState<Resumo | null>(null)
 
   // filtros
   const [busca, setBusca]   = useState('')
@@ -111,6 +122,13 @@ export default function ParceirosPage() {
 
   useEffect(() => { load(1, applied, sortBy, sortDir) }, [load, applied, sortBy, sortDir])
 
+  useEffect(() => {
+    fetch('/api/parceiros/resumo')
+      .then(r => r.json())
+      .then(setResumo)
+      .catch(() => {})
+  }, [])
+
   function applyFilters() {
     setApplied({ busca, status, uf, ano, mes: ano ? mes : '' })
   }
@@ -144,9 +162,9 @@ export default function ParceirosPage() {
     return nums
   }
 
-  const totalGeral = totalAtivos + totalInativos
-  const pctAtivos  = totalGeral > 0 ? ((totalAtivos / totalGeral) * 100).toFixed(1) : '0'
-  const pctInativos = totalGeral > 0 ? ((totalInativos / totalGeral) * 100).toFixed(1) : '0'
+  const totalGeral  = resumo?.total ?? (totalAtivos + totalInativos)
+  const pctAtivos   = totalGeral > 0 ? (((resumo?.totalAtivos ?? totalAtivos) / totalGeral) * 100).toFixed(1) : '0'
+  const pctInativos = totalGeral > 0 ? (((resumo?.totalInativos ?? totalInativos) / totalGeral) * 100).toFixed(1) : '0'
 
   const periodoLabel = applied.ano
     ? applied.mes
@@ -172,8 +190,8 @@ export default function ParceirosPage() {
 
       <main className="flex-1 overflow-auto p-5">
 
-        {/* Cards de resumo */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
+        {/* KPI cards */}
+        <div className="grid grid-cols-3 gap-3 mb-5">
           <button
             onClick={() => { setStatus(s => s === 'ATIVO' ? '' : 'ATIVO'); setApplied(a => ({ ...a, status: a.status === 'ATIVO' ? '' : 'ATIVO' })) }}
             className={cn(
@@ -183,16 +201,11 @@ export default function ParceirosPage() {
                 : 'border-[var(--nova-border)] bg-[var(--nova-bg-elev)] hover:border-emerald-500/30',
             )}
           >
-            <p className="text-xs font-medium text-[var(--nova-text-dim)] mb-1">Ativos</p>
-            <div className="flex items-baseline gap-3">
-              <p className={cn('text-2xl font-bold', applied.status === 'ATIVO' ? 'text-emerald-400' : 'text-emerald-500')}>
-                {loading ? '—' : totalAtivos.toLocaleString('pt-BR')}
-              </p>
-              {!loading && totalGeral > 0 && (
-                <span className="text-sm font-medium text-emerald-500/70">{pctAtivos}%</span>
-              )}
-            </div>
-            <p className="text-xs text-[var(--nova-text-dim)] mt-0.5">pagamento nos últimos 60 dias</p>
+            <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-[var(--nova-text-dim)] mb-1">Ativos (60 dias)</p>
+            <p className={cn('text-3xl font-bold', applied.status === 'ATIVO' ? 'text-emerald-400' : 'text-emerald-500')}>
+              {resumo ? resumo.totalAtivos.toLocaleString('pt-BR') : '—'}
+            </p>
+            {resumo && <p className="text-xs text-[var(--nova-text-dim)] mt-1">{pctAtivos}% da base</p>}
           </button>
           <button
             onClick={() => { setStatus(s => s === 'INATIVO' ? '' : 'INATIVO'); setApplied(a => ({ ...a, status: a.status === 'INATIVO' ? '' : 'INATIVO' })) }}
@@ -203,18 +216,40 @@ export default function ParceirosPage() {
                 : 'border-[var(--nova-border)] bg-[var(--nova-bg-elev)] hover:border-amber-500/30',
             )}
           >
-            <p className="text-xs font-medium text-[var(--nova-text-dim)] mb-1">Inativos</p>
-            <div className="flex items-baseline gap-3">
-              <p className={cn('text-2xl font-bold', applied.status === 'INATIVO' ? 'text-amber-400' : 'text-amber-500')}>
-                {loading ? '—' : totalInativos.toLocaleString('pt-BR')}
-              </p>
-              {!loading && totalGeral > 0 && (
-                <span className="text-sm font-medium text-amber-500/70">{pctInativos}%</span>
-              )}
-            </div>
-            <p className="text-xs text-[var(--nova-text-dim)] mt-0.5">sem pagamento há mais de 60 dias</p>
+            <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-[var(--nova-text-dim)] mb-1">Inativos</p>
+            <p className={cn('text-3xl font-bold', applied.status === 'INATIVO' ? 'text-amber-400' : 'text-amber-500')}>
+              {resumo ? resumo.totalInativos.toLocaleString('pt-BR') : '—'}
+            </p>
+            {resumo && <p className="text-xs text-[var(--nova-text-dim)] mt-1">{pctInativos}% da base</p>}
           </button>
+          <div className="rounded-md border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] p-4">
+            <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-[var(--nova-text-dim)] mb-1">Total da base</p>
+            <p className="text-3xl font-bold text-[var(--nova-text)]">
+              {resumo ? resumo.total.toLocaleString('pt-BR') : '—'}
+            </p>
+            {resumo && <p className="text-xs text-[var(--nova-text-dim)] mt-1">parceiros com produção</p>}
+          </div>
         </div>
+
+        {/* Gráficos */}
+        {resumo && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-5">
+            <DonutChart
+              title="Parceiros por Convênio"
+              centerLabel="Parceiros"
+              data={resumo.porConvenio.map(r => ({ label: r.label, value: r.parceiros, color: r.color }))}
+              rowsPerColumn={4}
+              labelWidth={72}
+            />
+            <DonutChart
+              title="Parceiros por Banco"
+              centerLabel="Parceiros"
+              data={resumo.porBanco.map(r => ({ label: r.label, value: r.parceiros, color: r.color }))}
+              rowsPerColumn={5}
+              labelWidth={90}
+            />
+          </div>
+        )}
 
         {/* Filtros */}
         <div className="flex flex-wrap gap-2 mb-4" role="search" aria-label="Filtros de parceiros">
