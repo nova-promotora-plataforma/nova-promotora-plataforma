@@ -114,6 +114,18 @@ interface ProducaoData {
 
 const CAMPANHAS: Campanha[] = [
   {
+    id: 'egv-30-dias',
+    nome: 'EGV 30 DIAS',
+    data: '21/10/2026',
+    status: 'Concluída',
+    total: 500,
+    enviados: 475,
+    entregues: 473,
+    lidos: 338,
+    respostas: 77,
+    falhas: 25,
+  },
+  {
     id: 'lancamento-powerhub-1',
     nome: 'Lançamento PowerHub 1',
     data: '27/05/2026',
