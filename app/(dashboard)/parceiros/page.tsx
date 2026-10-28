@@ -125,7 +125,7 @@ export default function ParceirosPage() {
   useEffect(() => {
     fetch('/api/parceiros/resumo')
       .then(r => r.json())
-      .then(setResumo)
+      .then(d => { if (typeof d?.totalAtivos === 'number') setResumo(d) })
       .catch(() => {})
   }, [])
 

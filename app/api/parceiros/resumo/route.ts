@@ -5,24 +5,23 @@ import { prisma } from '@/lib/db/client'
 const ACTIVE_DAYS = 60
 
 export async function GET() {
-  const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - ACTIVE_DAYS)
+  // Conta ativos/inativos direto no SQL — evita carregar todos os parceiros para o JS
+  const statusCounts = await prisma.$queryRawUnsafe<{
+    total_ativos:   number
+    total_inativos: number
+  }[]>(`
+    SELECT
+      COUNT(*) FILTER (WHERE ultima >= NOW() - INTERVAL '${ACTIVE_DAYS} days')::int AS total_ativos,
+      COUNT(*) FILTER (WHERE ultima <  NOW() - INTERVAL '${ACTIVE_DAYS} days' OR ultima IS NULL)::int AS total_inativos
+    FROM (
+      SELECT cod_parceiro, MAX(data_pgto_cms) AS ultima
+      FROM proposals
+      GROUP BY cod_parceiro
+    ) sub
+  `)
 
-  // Status global por parceiro
-  const partnerStatus = await prisma.$queryRaw<{
-    cod_parceiro:    string
-    ultima_producao: Date | null
-  }[]>`
-    SELECT cod_parceiro, MAX(data_pgto_cms) AS ultima_producao
-    FROM proposals
-    GROUP BY cod_parceiro
-  `
-
-  let totalAtivos = 0, totalInativos = 0
-  for (const p of partnerStatus) {
-    if (p.ultima_producao && p.ultima_producao >= cutoff) totalAtivos++
-    else totalInativos++
-  }
+  const totalAtivos   = Number(statusCounts[0]?.total_ativos   ?? 0)
+  const totalInativos = Number(statusCounts[0]?.total_inativos ?? 0)
 
   // Agrega por convênio: número de parceiros únicos e produção total
   const convenioRaw = await prisma.$queryRaw<{
