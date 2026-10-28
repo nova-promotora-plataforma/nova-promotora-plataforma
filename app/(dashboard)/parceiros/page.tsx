@@ -223,13 +223,21 @@ export default function ParceirosPage() {
             </p>
             {resumo && <p className="text-xs text-[var(--nova-text-dim)] mt-1">{pctInativos}% da base</p>}
           </button>
-          <div className="rounded-md border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] p-4">
+          <button
+            onClick={() => { setStatus(''); setApplied(a => ({ ...a, status: '' })) }}
+            className={cn(
+              'text-left rounded-md border p-4 transition-nova cursor-pointer',
+              !applied.status
+                ? 'border-[var(--nova-blue)]/50 bg-[var(--nova-blue)]/5'
+                : 'border-[var(--nova-border)] bg-[var(--nova-bg-elev)] hover:border-[var(--nova-blue)]/30',
+            )}
+          >
             <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-[var(--nova-text-dim)] mb-1">Total da base</p>
             <p className="text-3xl font-bold text-[var(--nova-text)]">
               {resumo ? resumo.total.toLocaleString('pt-BR') : '—'}
             </p>
             {resumo && <p className="text-xs text-[var(--nova-text-dim)] mt-1">parceiros com produção</p>}
-          </div>
+          </button>
           <div className="rounded-md border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] p-4">
             <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-[var(--nova-text-dim)] mb-1">Produção total</p>
             <p className="text-3xl font-bold text-[var(--nova-blue)]">
