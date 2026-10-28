@@ -117,6 +117,32 @@ export async function GET(req: NextRequest) {
 
   const total = filtered.length
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  // Exportação CSV
+  if (searchParams.get('export') === '1') {
+    const fmt = (v: number) =>
+      new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
+    const header = ['Código', 'Nome', 'Cidade', 'UF', 'Status', 'Último Prod.', 'Total Acumulado']
+    const rows = filtered.map(p => [
+      p.codigo,
+      p.nome,
+      p.funcionarioCidade ?? '',
+      p.uf ?? '',
+      p.status,
+      p.lastProductionMonth ?? '',
+      fmt(p.totalProducao),
+    ])
+    const csv = [header, ...rows]
+      .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';'))
+      .join('\n')
+    return new Response('﻿' + csv, {
+      headers: {
+        'Content-Type': 'text/csv;charset=utf-8',
+        'Content-Disposition': `attachment; filename="parceiros.csv"`,
+      },
+    })
+  }
+
   const slice = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return NextResponse.json({ data: slice, total, page, pages, sortBy, sortDir, totalAtivos, totalInativos })

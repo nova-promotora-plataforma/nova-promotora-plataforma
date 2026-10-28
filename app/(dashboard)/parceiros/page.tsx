@@ -6,7 +6,7 @@ import { TopBar } from '@/components/layout/TopBar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { DonutChart } from '@/components/charts/DonutChart'
-import { Megaphone, Eye, ChevronLeft, ChevronRight, Filter, Loader2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
+import { Megaphone, Eye, ChevronLeft, ChevronRight, Filter, Loader2, ChevronUp, ChevronDown, ChevronsUpDown, Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const PAGE_SIZE = 20
@@ -312,6 +312,20 @@ export default function ParceirosPage() {
           <Button variant="blue" size="sm" onClick={applyFilters}>
             <Filter size={14} /> Filtrar
           </Button>
+          <button
+            onClick={() => {
+              const params = new URLSearchParams({ export: '1', sortBy, sortDir })
+              if (applied.busca)  params.set('q', applied.busca)
+              if (applied.status) params.set('status', applied.status)
+              if (applied.uf)     params.set('uf', applied.uf)
+              if (applied.ano)    params.set('ano', applied.ano)
+              if (applied.ano && applied.mes) params.set('mes', applied.mes)
+              window.location.href = `/api/parceiros?${params}`
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-sm border border-[var(--nova-border)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text)] hover:bg-[var(--nova-bg-elev-2)] transition-nova"
+          >
+            <Download size={13} /> Exportar CSV
+          </button>
           <div className="ml-auto">
             <Link href="/campanhas/nova">
               <Button variant="primary" size="sm">
