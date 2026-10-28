@@ -148,9 +148,9 @@ export async function GET() {
 
   const convenios = keys.map(tab => {
     const s = stats[tab]
-    const topPartners = s.partners
+    const allPartners = s.partners
       .sort((a, b) => b.total - a.total)
-      .slice(0, 10)
+      .map((p, i) => ({ ...p, rank: i + 1, status: p.lastMonth && partnerByTab[tab].get(p.codigo)?.ultimaProd && partnerByTab[tab].get(p.codigo)!.ultimaProd! >= cutoff ? 'ativo' : 'inativo' }))
 
     return {
       key:           tab,
@@ -166,7 +166,7 @@ export async function GET() {
         month:  m,
         amount: Math.round(monthly[tab].get(m) ?? 0),
       })),
-      topPartners,
+      partners: allPartners,
     }
   })
 
