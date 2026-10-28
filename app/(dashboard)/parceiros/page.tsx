@@ -44,6 +44,7 @@ interface Resumo {
   totalAtivos: number
   totalInativos: number
   total: number
+  totalProducao: number
   porConvenio: ResumoSlice[]
   porBanco: ResumoSlice[]
 }
@@ -191,7 +192,7 @@ export default function ParceirosPage() {
       <main className="flex-1 overflow-auto p-5">
 
         {/* KPI cards */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="grid grid-cols-4 gap-3 mb-5">
           <button
             onClick={() => { setStatus(s => s === 'ATIVO' ? '' : 'ATIVO'); setApplied(a => ({ ...a, status: a.status === 'ATIVO' ? '' : 'ATIVO' })) }}
             className={cn(
@@ -228,6 +229,18 @@ export default function ParceirosPage() {
               {resumo ? resumo.total.toLocaleString('pt-BR') : '—'}
             </p>
             {resumo && <p className="text-xs text-[var(--nova-text-dim)] mt-1">parceiros com produção</p>}
+          </div>
+          <div className="rounded-md border border-[var(--nova-border)] bg-[var(--nova-bg-elev)] p-4">
+            <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-[var(--nova-text-dim)] mb-1">Produção total</p>
+            <p className="text-3xl font-bold text-[var(--nova-blue)]">
+              {resumo ? (() => {
+                const v = resumo.totalProducao
+                if (v >= 1_000_000_000) return `R$ ${(v / 1_000_000_000).toFixed(1)}B`
+                if (v >= 1_000_000)     return `R$ ${(v / 1_000_000).toFixed(1)}M`
+                return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
+              })() : '—'}
+            </p>
+            {resumo && <p className="text-xs text-[var(--nova-text-dim)] mt-1">acumulado histórico</p>}
           </div>
         </div>
 
