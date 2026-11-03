@@ -59,13 +59,12 @@ export async function GET() {
     return { month: `${mon}/${yr}`, amount: Math.round(r.amount ?? 0) }
   })
 
-  // Top 6 UFs por número de parceiros (via tabela partners)
+  // Top 6 UFs por número de parceiros cadastrados
   const ufRaw = await prisma.$queryRaw<{ uf: string; cnt: number }[]>`
-    SELECT pt.uf, COUNT(DISTINCT pr.cod_parceiro)::int AS cnt
-    FROM proposals pr
-    JOIN partners pt ON pt.codigo = pr.cod_parceiro
-    WHERE pt.uf IS NOT NULL AND pt.uf != ''
-    GROUP BY pt.uf
+    SELECT uf, COUNT(*)::int AS cnt
+    FROM partners
+    WHERE uf IS NOT NULL AND uf != '' AND deleted_at IS NULL
+    GROUP BY uf
     ORDER BY cnt DESC
     LIMIT 6
   `
