@@ -28,6 +28,11 @@ const USERS: Record<string, { password: string; name: string; role: string }> = 
     name:     'Lucas Rosa',
     role:     'admin',
   },
+  'demo@novapromotora.com': {
+    password: process.env.AUTH_PASSWORD_DEMO ?? 'Demo@2026',
+    name:     'Visitante',
+    role:     'viewer',
+  },
 }
 
 export async function POST(req: NextRequest) {
