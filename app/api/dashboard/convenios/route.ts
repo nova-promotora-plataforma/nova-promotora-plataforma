@@ -23,9 +23,6 @@ const CONVENIO_LABELS: Record<string, string> = {
 }
 
 export async function GET() {
-  const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - ACTIVE_DAYS)
-
   // Produção mensal por convenio — últimos 13 meses
   const monthlyRaw = await prisma.$queryRaw<{
     convenio:   string | null
@@ -43,27 +40,29 @@ export async function GET() {
     ORDER BY 2
   `
 
-  // Agregação por parceiro × convenio
-  const partnerRaw = await prisma.$queryRaw<{
+  // Agregação por parceiro × convenio — is_ativo calculado no SQL para evitar bug de tipo Date
+  const partnerRaw = await prisma.$queryRawUnsafe<{
     cod_parceiro:    string
     convenio:        string | null
     nome:            string | null
     uf:              string | null
     total_producao:  number
-    ultima_producao: Date | null
-  }[]>`
+    ultima_producao: string | null
+    is_ativo:        boolean
+  }[]>(`
     SELECT
       pr.cod_parceiro,
       pr.convenio,
       pt.nome,
       pt.uf,
-      SUM(pr.producao)::float AS total_producao,
-      MAX(pr.data_pgto_cms)   AS ultima_producao
+      SUM(pr.producao)::float                                           AS total_producao,
+      MAX(pr.data_pgto_cms)::text                                       AS ultima_producao,
+      (MAX(pr.data_pgto_cms) >= NOW() - INTERVAL '${ACTIVE_DAYS} days') AS is_ativo
     FROM proposals pr
     LEFT JOIN partners pt ON pt.codigo = pr.cod_parceiro
     WHERE pr.producao > 0
     GROUP BY pr.cod_parceiro, pr.convenio, pt.nome, pt.uf
-  `
+  `)
 
   // Estrutura por aba
   type ConvenioKey = 'inss' | 'fgts' | 'credito_trabalhador' | 'demais'
@@ -105,43 +104,51 @@ export async function GET() {
   }
 
   // Parceiro pode ter múltiplos convênios — agrupamos por tab × cod_parceiro
-  const partnerByTab: Record<ConvenioKey, Map<string, { nome: string; uf: string | null; total: number; ultimaProd: Date | null }>> = {
+  const partnerByTab: Record<ConvenioKey, Map<string, { nome: string; uf: string | null; total: number; ultimaProd: string | null; isAtivo: boolean }>> = {
     inss: new Map(), fgts: new Map(), credito_trabalhador: new Map(), demais: new Map(),
   }
 
   for (const r of partnerRaw) {
-    const tab = classifyConvenio(r.convenio)
+    const tab      = classifyConvenio(r.convenio)
     const existing = partnerByTab[tab].get(r.cod_parceiro)
-    const prod    = r.ultima_producao ? new Date(r.ultima_producao) : null
     if (!existing) {
       partnerByTab[tab].set(r.cod_parceiro, {
-        nome:      r.nome ?? r.cod_parceiro,
-        uf:        r.uf ?? null,
-        total:     r.total_producao ?? 0,
-        ultimaProd: prod,
+        nome:       r.nome ?? r.cod_parceiro,
+        uf:         r.uf ?? null,
+        total:      r.total_producao ?? 0,
+        ultimaProd: r.ultima_producao ?? null,
+        isAtivo:    Boolean(r.is_ativo),
       })
     } else {
       existing.total += r.total_producao ?? 0
-      if (prod && (!existing.ultimaProd || prod > existing.ultimaProd)) existing.ultimaProd = prod
+      // mantém is_ativo = true se qualquer convênio do parceiro for ativo
+      if (r.is_ativo) existing.isAtivo = true
+      // mantém a data mais recente
+      if (r.ultima_producao && (!existing.ultimaProd || r.ultima_producao > existing.ultimaProd)) {
+        existing.ultimaProd = r.ultima_producao
+      }
     }
   }
 
   for (const tab of keys) {
     for (const [codigo, p] of Array.from(partnerByTab[tab])) {
-      const isAtivo = p.ultimaProd ? p.ultimaProd >= cutoff : false
       stats[tab].totalProducao += p.total
-      if (isAtivo) stats[tab].ativos++
+      if (p.isAtivo) stats[tab].ativos++
       else stats[tab].inativos++
 
-      const d    = p.ultimaProd
-      const mon  = d ? MONTH_NAMES[d.getUTCMonth()] : null
-      const yr   = d ? String(d.getUTCFullYear()).slice(2) : null
+      let lastMonth: string | null = null
+      if (p.ultimaProd) {
+        const d   = new Date(p.ultimaProd)
+        const mon = MONTH_NAMES[d.getUTCMonth()]
+        const yr  = String(d.getUTCFullYear()).slice(2)
+        lastMonth = `${mon}/${yr}`
+      }
       stats[tab].partners.push({
         codigo,
         nome:      p.nome,
         uf:        p.uf,
         total:     Math.round(p.total),
-        lastMonth: d && mon ? `${mon}/${yr}` : null,
+        lastMonth,
       })
     }
   }
@@ -150,7 +157,7 @@ export async function GET() {
     const s = stats[tab]
     const allPartners = s.partners
       .sort((a, b) => b.total - a.total)
-      .map((p, i) => ({ ...p, rank: i + 1, status: p.lastMonth && partnerByTab[tab].get(p.codigo)?.ultimaProd && partnerByTab[tab].get(p.codigo)!.ultimaProd! >= cutoff ? 'ativo' : 'inativo' }))
+      .map((p, i) => ({ ...p, rank: i + 1, status: partnerByTab[tab].get(p.codigo)?.isAtivo ? 'ativo' : 'inativo' }))
 
     return {
       key:           tab,
