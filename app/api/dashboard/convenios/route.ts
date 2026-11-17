@@ -40,7 +40,16 @@ export async function GET() {
     ORDER BY 2
   `
 
-  // Agregação por parceiro × convenio — is_ativo calculado no SQL para evitar bug de tipo Date
+  // Parceiros com produção nos últimos ACTIVE_DAYS dias — Set para lookup O(1)
+  const ativosRaw = await prisma.$queryRawUnsafe<{ cod_parceiro: string }[]>(`
+    SELECT DISTINCT cod_parceiro
+    FROM proposals
+    WHERE data_pgto_cms >= NOW() - INTERVAL '${ACTIVE_DAYS} days'
+      AND producao > 0
+  `)
+  const ativosSet = new Set(ativosRaw.map(r => r.cod_parceiro))
+
+  // Agregação por parceiro × convenio
   const partnerRaw = await prisma.$queryRawUnsafe<{
     cod_parceiro:    string
     convenio:        string | null
@@ -48,16 +57,14 @@ export async function GET() {
     uf:              string | null
     total_producao:  number
     ultima_producao: string | null
-    is_ativo:        number
   }[]>(`
     SELECT
       pr.cod_parceiro,
       pr.convenio,
       pt.nome,
       pt.uf,
-      SUM(pr.producao)::float                                                        AS total_producao,
-      MAX(pr.data_pgto_cms)::text                                                    AS ultima_producao,
-      (MAX(pr.data_pgto_cms) >= NOW() - INTERVAL '${ACTIVE_DAYS} days')::int        AS is_ativo
+      SUM(pr.producao)::float    AS total_producao,
+      MAX(pr.data_pgto_cms)::text AS ultima_producao
     FROM proposals pr
     LEFT JOIN partners pt ON pt.codigo = pr.cod_parceiro
     WHERE pr.producao > 0
@@ -104,7 +111,7 @@ export async function GET() {
   }
 
   // Parceiro pode ter múltiplos convênios — agrupamos por tab × cod_parceiro
-  const partnerByTab: Record<ConvenioKey, Map<string, { nome: string; uf: string | null; total: number; ultimaProd: string | null; isAtivo: boolean }>> = {
+  const partnerByTab: Record<ConvenioKey, Map<string, { nome: string; uf: string | null; total: number; ultimaProd: string | null }>> = {
     inss: new Map(), fgts: new Map(), credito_trabalhador: new Map(), demais: new Map(),
   }
 
@@ -117,13 +124,9 @@ export async function GET() {
         uf:         r.uf ?? null,
         total:      r.total_producao ?? 0,
         ultimaProd: r.ultima_producao ?? null,
-        isAtivo:    r.is_ativo > 0,
       })
     } else {
       existing.total += r.total_producao ?? 0
-      // mantém is_ativo = true se qualquer convênio do parceiro for ativo
-      if (r.is_ativo > 0) existing.isAtivo = true
-      // mantém a data mais recente
       if (r.ultima_producao && (!existing.ultimaProd || r.ultima_producao > existing.ultimaProd)) {
         existing.ultimaProd = r.ultima_producao
       }
@@ -132,8 +135,9 @@ export async function GET() {
 
   for (const tab of keys) {
     for (const [codigo, p] of Array.from(partnerByTab[tab])) {
+      const isAtivo = ativosSet.has(codigo)
       stats[tab].totalProducao += p.total
-      if (p.isAtivo) stats[tab].ativos++
+      if (isAtivo) stats[tab].ativos++
       else stats[tab].inativos++
 
       let lastMonth: string | null = null
@@ -157,7 +161,7 @@ export async function GET() {
     const s = stats[tab]
     const allPartners = s.partners
       .sort((a, b) => b.total - a.total)
-      .map((p, i) => ({ ...p, rank: i + 1, status: partnerByTab[tab].get(p.codigo)?.isAtivo ? 'ativo' : 'inativo' }))
+      .map((p, i) => ({ ...p, rank: i + 1, status: ativosSet.has(p.codigo) ? 'ativo' : 'inativo' }))
 
     return {
       key:           tab,

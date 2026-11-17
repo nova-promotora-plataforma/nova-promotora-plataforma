@@ -26,36 +26,41 @@ export async function GET(req: NextRequest) {
 
   // Agregação principal: usa MAX global para calcular status ATIVO/INATIVO (independente do período),
   // mas SUM de producao restrito ao período quando filtrado
+  // Parceiros com produção recente — Set para lookup O(1)
+  const ativosRaw = await prisma.$queryRawUnsafe<{ cod_parceiro: string }[]>(`
+    SELECT DISTINCT cod_parceiro
+    FROM proposals
+    WHERE data_pgto_cms >= NOW() - INTERVAL '${ACTIVE_DAYS} days'
+      AND producao > 0
+  `)
+  const ativosSet = new Set(ativosRaw.map(r => r.cod_parceiro))
+
   const agg = await prisma.$queryRawUnsafe<{
-    cod_parceiro:         string
-    total_producao:       number
-    ultima_producao:      string | null
-    is_ativo:             number
-    num_propostas:        number
+    cod_parceiro:    string
+    total_producao:  number
+    ultima_producao: string | null
+    num_propostas:   number
   }[]>(`
     SELECT
       cod_parceiro,
       SUM(CASE WHEN TRUE ${periodoClause} THEN producao ELSE 0 END)::float AS total_producao,
       MAX(CASE WHEN TRUE ${periodoClause} THEN data_pgto_cms ELSE NULL END)::text AS ultima_producao,
-      (MAX(data_pgto_cms) >= NOW() - INTERVAL '${ACTIVE_DAYS} days')::int         AS is_ativo,
-      COUNT(*)::int                                                                AS num_propostas
+      COUNT(*)::int AS num_propostas
     FROM proposals
     GROUP BY cod_parceiro
     ${periodoClause ? 'HAVING SUM(CASE WHEN TRUE ' + periodoClause + ' THEN producao ELSE 0 END) > 0' : ''}
   `)
 
-  const parceiros = agg.map(r => {
-    return {
-      codigo:         r.cod_parceiro,
-      nome:           r.cod_parceiro,
-      uf:             null as string | null,
-      funcionarioCidade: null as string | null,
-      status:         r.is_ativo > 0 ? 'ATIVO' : 'INATIVO',
-      totalProducao:  r.total_producao,
-      ultimaProducao: r.ultima_producao,
-      numPropostas:   r.num_propostas,
-    }
-  })
+  const parceiros = agg.map(r => ({
+    codigo:            r.cod_parceiro,
+    nome:              r.cod_parceiro,
+    uf:                null as string | null,
+    funcionarioCidade: null as string | null,
+    status:            ativosSet.has(r.cod_parceiro) ? 'ATIVO' : 'INATIVO',
+    totalProducao:     r.total_producao,
+    ultimaProducao:    r.ultima_producao,
+    numPropostas:      r.num_propostas,
+  }))
 
   // Enriquece com dados cadastrais da tabela partners
   const codigos   = parceiros.map(p => p.codigo)
