@@ -11,30 +11,27 @@ export async function GET() {
   const ninetyDaysAgo = new Date()
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
 
-  // Agregação por parceiro: total de produção e última produção
-  const partnerAgg = await prisma.$queryRaw<{
-    cod_parceiro:    string
-    total_producao:  number
-    ultima_producao: Date | null
-  }[]>`
+  // Agrega no SQL — evita problema de comparação string vs Date no JS
+  const totaisRaw = await prisma.$queryRawUnsafe<{
+    eligible:      number
+    ativos:        number
+    producao_total: number
+  }[]>(`
     SELECT
-      cod_parceiro,
-      SUM(producao)::float    AS total_producao,
-      MAX(data_pgto_cms)      AS ultima_producao
-    FROM proposals
-    WHERE producao > 0
-    GROUP BY cod_parceiro
-  `
+      COUNT(*)::int                                                                 AS eligible,
+      COUNT(*) FILTER (WHERE ultima >= NOW() - INTERVAL '${ACTIVE_DAYS} days')::int AS ativos,
+      SUM(total)::float                                                             AS producao_total
+    FROM (
+      SELECT cod_parceiro, MAX(data_pgto_cms) AS ultima, SUM(producao) AS total
+      FROM proposals
+      WHERE producao > 0
+      GROUP BY cod_parceiro
+    ) sub
+  `)
 
-  let eligible      = 0
-  let ativos        = 0
-  let producaoTotal = 0
-
-  for (const p of partnerAgg) {
-    eligible++
-    producaoTotal += p.total_producao ?? 0
-    if (p.ultima_producao && p.ultima_producao >= cutoff) ativos++
-  }
+  const eligible      = Number(totaisRaw[0]?.eligible      ?? 0)
+  const ativos        = Number(totaisRaw[0]?.ativos        ?? 0)
+  const producaoTotal = Number(totaisRaw[0]?.producao_total ?? 0)
 
   // Produção mensal — últimos 13 meses
   const monthlyRaw = await prisma.$queryRaw<{
@@ -59,16 +56,18 @@ export async function GET() {
     return { month: `${mon}/${yr}`, amount: Math.round(r.amount ?? 0) }
   })
 
-  // Top 6 UFs por número de parceiros cadastrados
-  const ufRaw = await prisma.$queryRaw<{ uf: string; cnt: number }[]>`
-    SELECT uf, COUNT(*)::int AS cnt
-    FROM partners
-    WHERE uf IS NOT NULL AND uf != '' AND deleted_at IS NULL
-    GROUP BY uf
+  // Top 6 bancos por número de parceiros únicos
+  const bancoRaw = await prisma.$queryRaw<{ banco: string; cnt: number }[]>`
+    SELECT
+      COALESCE(banco, 'Não informado') AS banco,
+      COUNT(DISTINCT cod_parceiro)::int AS cnt
+    FROM proposals
+    WHERE producao > 0
+    GROUP BY banco
     ORDER BY cnt DESC
     LIMIT 6
   `
-  const ufTop6 = ufRaw.map(r => ({ label: r.uf, value: r.cnt }))
+  const ufTop6 = bancoRaw.map(r => ({ label: r.banco, value: r.cnt }))
 
   // Parceiros em alerta de inatividade (última produção entre 30 e 90 dias atrás)
   const thirtyDaysAgo = new Date()

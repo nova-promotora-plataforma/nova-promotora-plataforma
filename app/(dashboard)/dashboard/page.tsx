@@ -123,7 +123,7 @@ export default function DashboardPage() {
           <section aria-label="Gráficos de produção">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <ProductionChart data={data.productionData} title="Produção mensal (R$)" />
-              <BarChart        data={data.ufTop6}         title="Parceiros por UF — top 6" />
+              <BarChart        data={data.ufTop6}         title="Top 6 bancos — parceiros" />
             </div>
           </section>
         )}
