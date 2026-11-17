@@ -48,16 +48,16 @@ export async function GET() {
     uf:              string | null
     total_producao:  number
     ultima_producao: string | null
-    is_ativo:        boolean
+    is_ativo:        number
   }[]>(`
     SELECT
       pr.cod_parceiro,
       pr.convenio,
       pt.nome,
       pt.uf,
-      SUM(pr.producao)::float                                           AS total_producao,
-      MAX(pr.data_pgto_cms)::text                                       AS ultima_producao,
-      (MAX(pr.data_pgto_cms) >= NOW() - INTERVAL '${ACTIVE_DAYS} days') AS is_ativo
+      SUM(pr.producao)::float                                                        AS total_producao,
+      MAX(pr.data_pgto_cms)::text                                                    AS ultima_producao,
+      (MAX(pr.data_pgto_cms) >= NOW() - INTERVAL '${ACTIVE_DAYS} days')::int        AS is_ativo
     FROM proposals pr
     LEFT JOIN partners pt ON pt.codigo = pr.cod_parceiro
     WHERE pr.producao > 0
@@ -117,12 +117,12 @@ export async function GET() {
         uf:         r.uf ?? null,
         total:      r.total_producao ?? 0,
         ultimaProd: r.ultima_producao ?? null,
-        isAtivo:    Boolean(r.is_ativo),
+        isAtivo:    r.is_ativo > 0,
       })
     } else {
       existing.total += r.total_producao ?? 0
       // mantém is_ativo = true se qualquer convênio do parceiro for ativo
-      if (r.is_ativo) existing.isAtivo = true
+      if (r.is_ativo > 0) existing.isAtivo = true
       // mantém a data mais recente
       if (r.ultima_producao && (!existing.ultimaProd || r.ultima_producao > existing.ultimaProd)) {
         existing.ultimaProd = r.ultima_producao
