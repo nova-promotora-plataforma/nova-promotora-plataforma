@@ -16,9 +16,6 @@ export async function GET(req: NextRequest) {
   const ano     = parseInt(searchParams.get('ano') ?? '0') || 0
   const mes     = parseInt(searchParams.get('mes') ?? '0') || 0
 
-  const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - ACTIVE_DAYS)
-
   // Filtro de período opcional (para producao do período selecionado)
   let periodoClause = ''
   if (ano && mes) {
@@ -32,30 +29,28 @@ export async function GET(req: NextRequest) {
   const agg = await prisma.$queryRawUnsafe<{
     cod_parceiro:         string
     total_producao:       number
-    ultima_producao:      Date | null
-    ultima_producao_geral: Date | null
+    ultima_producao:      string | null
+    is_ativo:             number
     num_propostas:        number
   }[]>(`
     SELECT
       cod_parceiro,
       SUM(CASE WHEN TRUE ${periodoClause} THEN producao ELSE 0 END)::float AS total_producao,
-      MAX(CASE WHEN TRUE ${periodoClause} THEN data_pgto_cms ELSE NULL END) AS ultima_producao,
-      MAX(data_pgto_cms)                                                     AS ultima_producao_geral,
-      COUNT(*)::int                                                          AS num_propostas
+      MAX(CASE WHEN TRUE ${periodoClause} THEN data_pgto_cms ELSE NULL END)::text AS ultima_producao,
+      (MAX(data_pgto_cms) >= NOW() - INTERVAL '${ACTIVE_DAYS} days')::int         AS is_ativo,
+      COUNT(*)::int                                                                AS num_propostas
     FROM proposals
     GROUP BY cod_parceiro
     ${periodoClause ? 'HAVING SUM(CASE WHEN TRUE ' + periodoClause + ' THEN producao ELSE 0 END) > 0' : ''}
   `)
 
   const parceiros = agg.map(r => {
-    const ultimaGeral = r.ultima_producao_geral
-    const ativo = ultimaGeral ? ultimaGeral >= cutoff : false
     return {
       codigo:         r.cod_parceiro,
       nome:           r.cod_parceiro,
       uf:             null as string | null,
       funcionarioCidade: null as string | null,
-      status:         ativo ? 'ATIVO' : 'INATIVO',
+      status:         r.is_ativo > 0 ? 'ATIVO' : 'INATIVO',
       totalProducao:  r.total_producao,
       ultimaProducao: r.ultima_producao,
       numPropostas:   r.num_propostas,
